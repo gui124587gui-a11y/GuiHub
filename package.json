@@ -1,7 +1,7 @@
 {
   "name": "guihub",
   "productName": "GuiHub",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -16,7 +16,7 @@
     "preview": "vite preview",
     "check": "tsc -b --noEmit",
     "electron:dev": "concurrently \"cross-env NODE_ENV=development vite --port 5173 --strictPort\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "npm run build && electron-builder --publish always"
+    "electron:build": "npm run build && dotenv -e .env -- electron-builder --publish always"
   },
   "dependencies": {
     "@openrouter/sdk": "^0.13.65",
@@ -46,6 +46,7 @@
     "babel-plugin-react-dev-locator": "^1.0.6",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
+    "dotenv-cli": "^11.0.0",
     "electron": "^43.1.1",
     "electron-builder": "^26.15.3",
     "eslint": "^9.25.0",
@@ -60,7 +61,6 @@
     "vite-tsconfig-paths": "^5.1.4",
     "wait-on": "^9.0.10"
   },
-
   "build": {
     "appId": "com.guihub.app",
     "productName": "GuiHub",
@@ -88,4 +88,5 @@
     "releaseInfo": {
       "releaseNotesFile": "release-notes.md"
     }
+  }
 }
