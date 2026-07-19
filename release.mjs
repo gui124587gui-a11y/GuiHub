@@ -24,9 +24,15 @@ run('npm run build');
 run('npx electron-builder --win nsis');
 
 // 4. Git
-const msg = 'Atualização versão ' + version;
-run('git add .');
-run(`git commit -m "${msg}"`);
+// 4. Git
+console.log(`Verificando alterações no Git...`);
+try {
+    run('git add .');
+    // Tenta commitar. Se não houver nada, o erro será capturado pelo catch e ignorado.
+    run('git commit -m "Atualização versão ' + version + '"');
+} catch (e) {
+    console.log("⚠️ Nenhuma alteração detectada para commit, continuando...");
+}
 run('git push origin main');
 
 // 5. Tag
