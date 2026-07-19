@@ -14,6 +14,8 @@ export default function Configuracoes() {
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [updateReady, setUpdateReady] = useState(false);
   const [autoDownload, setAutoDownload] = useState(false);
+  const [appVersion, setAppVersion] = useState('1.0.0');
+  const [appBuild, setAppBuild] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPrefs = async () => {
@@ -26,6 +28,17 @@ export default function Configuracoes() {
     };
 
     loadPrefs();
+    const loadAppVersion = async () => {
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.getAppVersion) {
+        const res = await (window as any).electronAPI.getAppVersion();
+        if (res) {
+          setAppVersion(res.version || '1.0.0');
+          setAppBuild(res.build || null);
+        }
+      }
+    };
+
+    loadAppVersion();
 
     if (typeof window !== 'undefined' && (window as any).electronAPI?.onUpdateMessage) {
       (window as any).electronAPI.onUpdateMessage((status: any) => {
@@ -443,7 +456,7 @@ export default function Configuracoes() {
                     <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
                       GuiHub
                     </h2>
-                    <p className="text-textSecondary mb-6">Versão 1.0.0</p>
+                    <p className="text-textSecondary mb-6">Versão {appVersion}{appBuild ? ` (build ${appBuild})` : ''}</p>
                     <p className="text-textSecondary mb-8 max-w-md mx-auto">
                       O centro de controle definitivo para produtividade, automação e monitoramento de hardware.
                     </p>

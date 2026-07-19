@@ -675,6 +675,23 @@ ipcMain.handle('installUpdate', async () => {
   }
 });
 
+ipcMain.handle('getAppVersion', () => {
+  return {
+    version: app.getVersion(),
+    build: process.env.BUILD_NUMBER || null
+  };
+});
+
+ipcMain.handle('installUpdate', async () => {
+  try {
+    autoUpdater.quitAndInstall();
+    return { ok: true };
+  } catch (err) {
+    console.error('Erro ao instalar atualização:', err);
+    return { ok: false, error: String(err) };
+  }
+});
+
 ipcMain.handle('getUpdatePreferences', async () => {
   try {
     const prefs = store.get('update.preferences', { autoDownload: false });
