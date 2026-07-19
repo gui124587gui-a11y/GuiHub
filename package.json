@@ -16,7 +16,8 @@
     "preview": "vite preview",
     "check": "tsc -b --noEmit",
     "electron:dev": "concurrently \"cross-env NODE_ENV=development vite --port 5173 --strictPort\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "npm run build && dotenv -e .env -- electron-builder --publish always"
+    "electron:build": "npm run build && electron-builder --publish always",
+    "release": "zx release.mjs"
   },
   "dependencies": {
     "@openrouter/sdk": "^0.13.65",
@@ -59,7 +60,8 @@
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4",
-    "wait-on": "^9.0.10"
+    "wait-on": "^9.0.10",
+    "zx": "^8.8.5"
   },
   "build": {
     "appId": "com.guihub.app",
@@ -79,7 +81,9 @@
       {
         "provider": "github",
         "owner": "gui124587gui-a11y",
-        "repo": "GuiHub"
+        "repo": "GuiHub",
+        "vPrefixedTagName": true,
+        "releaseType": "release"
       }
     ],
     "extraMetadata": {
