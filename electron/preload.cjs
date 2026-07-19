@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getUpdatePreferences: () => ipcRenderer.invoke('getUpdatePreferences'),
   setUpdatePreferences: (prefs) => ipcRenderer.invoke('setUpdatePreferences', prefs),
   getAppVersion: () => ipcRenderer.invoke('getAppVersion'),
+  isPackaged: () => ipcRenderer.invoke('isPackaged'),
   onUpdateMessage: (callback) => ipcRenderer.on('update-message', (_event, status) => callback(status)),
   // Installer Magic
   installerStart: (softwareName) => ipcRenderer.invoke('installer:start', softwareName),

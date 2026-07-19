@@ -16,6 +16,7 @@ export default function Configuracoes() {
   const [autoDownload, setAutoDownload] = useState(false);
   const [appVersion, setAppVersion] = useState('1.0.0');
   const [appBuild, setAppBuild] = useState<string | null>(null);
+  const [isPackaged, setIsPackaged] = useState(false);
 
   useEffect(() => {
     const loadPrefs = async () => {
@@ -34,6 +35,7 @@ export default function Configuracoes() {
         if (res) {
           setAppVersion(res.version || '1.0.0');
           setAppBuild(res.build || null);
+          setIsPackaged(res.isPackaged ?? false);
         }
       }
     };
@@ -103,10 +105,19 @@ export default function Configuracoes() {
         setUpdateStatus('error');
         setUpdateMessage(`Erro ao verificar atualizações: ${res?.error ?? 'desconhecido'}`);
       }
+    } else {
+      setUpdateStatus('error');
+      setUpdateMessage('API de atualização não disponível. Verifique se o app está rodando em Electron com preload ativado.');
     }
   };
 
   const handleDownloadUpdate = async () => {
+    if (!isPackaged) {
+      setUpdateStatus('error');
+      setUpdateMessage('Auto-update só funciona em build empacotado. Rode a build para testar.');
+      return;
+    }
+
     if (typeof window !== 'undefined' && (window as any).electronAPI?.downloadUpdate) {
       setUpdateStatus('download-started');
       setUpdateMessage('Iniciando download...');
@@ -115,12 +126,28 @@ export default function Configuracoes() {
         setUpdateStatus('error');
         setUpdateMessage(`Erro ao iniciar download: ${res?.error ?? 'desconhecido'}`);
       }
+    } else {
+      setUpdateStatus('error');
+      setUpdateMessage('API de atualização não disponível. Verifique se o app está rodando em Electron com preload ativado.');
     }
   };
 
   const handleInstallUpdate = async () => {
+    if (!isPackaged) {
+      setUpdateStatus('error');
+      setUpdateMessage('Auto-update só funciona em build empacotado. Rode a build para testar.');
+      return;
+    }
+
     if (typeof window !== 'undefined' && (window as any).electronAPI?.installUpdate) {
-      await (window as any).electronAPI.installUpdate();
+      const res = await (window as any).electronAPI.installUpdate();
+      if (!res?.ok) {
+        setUpdateStatus('error');
+        setUpdateMessage(`Erro ao instalar atualização: ${res?.error ?? 'desconhecido'}`);
+      }
+    } else {
+      setUpdateStatus('error');
+      setUpdateMessage('API de atualização não disponível. Verifique se o app está rodando em Electron com preload ativado.');
     }
   };
 

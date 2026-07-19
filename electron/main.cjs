@@ -646,6 +646,9 @@ ipcMain.handle('maximize-window', () => {
 ipcMain.handle('close-window', () => mainWindow?.close());
 
 ipcMain.handle('checkForUpdates', async () => {
+  if (!app.isPackaged) {
+    return { ok: false, error: 'Auto-update só funciona em versão empacotada. Rode a build para testar.' };
+  }
   try {
     await autoUpdater.checkForUpdates();
     return { ok: true };
@@ -656,6 +659,9 @@ ipcMain.handle('checkForUpdates', async () => {
 });
 
 ipcMain.handle('downloadUpdate', async () => {
+  if (!app.isPackaged) {
+    return { ok: false, error: 'Auto-update só funciona em versão empacotada. Rode a build para testar.' };
+  }
   try {
     await autoUpdater.downloadUpdate();
     return { ok: true };
@@ -666,6 +672,9 @@ ipcMain.handle('downloadUpdate', async () => {
 });
 
 ipcMain.handle('installUpdate', async () => {
+  if (!app.isPackaged) {
+    return { ok: false, error: 'Auto-update só funciona em versão empacotada. Rode a build para testar.' };
+  }
   try {
     autoUpdater.quitAndInstall();
     return { ok: true };
@@ -678,18 +687,13 @@ ipcMain.handle('installUpdate', async () => {
 ipcMain.handle('getAppVersion', () => {
   return {
     version: app.getVersion(),
-    build: process.env.BUILD_NUMBER || null
+    build: process.env.BUILD_NUMBER || null,
+    isPackaged: app.isPackaged
   };
 });
 
-ipcMain.handle('installUpdate', async () => {
-  try {
-    autoUpdater.quitAndInstall();
-    return { ok: true };
-  } catch (err) {
-    console.error('Erro ao instalar atualização:', err);
-    return { ok: false, error: String(err) };
-  }
+ipcMain.handle('isPackaged', () => {
+  return app.isPackaged;
 });
 
 ipcMain.handle('getUpdatePreferences', async () => {
