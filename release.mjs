@@ -5,6 +5,11 @@ import { readFileSync } from 'fs';
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 const version = pkg.version;
 
+// Caminho absoluto para o GitHub CLI
+const ghPath = "C:\\Program Files\\GitHub CLI\\gh.exe";
+// Nome do arquivo gerado pelo electron-builder (com os espaços vistos no log)
+const setupFile = `C:/guihub-release/GuiHub Setup ${version}.exe`;
+
 function run(cmd) {
     console.log(`> Executando: ${cmd}`);
     execSync(cmd, { stdio: 'inherit', shell: true });
@@ -30,7 +35,14 @@ run(`git tag v${version}`);
 run(`git push origin v${version} --force`);
 
 // 6. GitHub CLI (Publicação)
-try { run(`gh release delete v${version} -y`); } catch (e) {}
-run(`gh release create v${version} "C:/guihub-release/GuiHub.Setup.${version}.exe" --title "Versão ${version}" --notes "Automático"`);
+console.log(`📤 Publicando no GitHub...`);
+try { 
+    run(`"${ghPath}" release delete v${version} -y`); 
+} catch (e) {
+    console.log("Nota: Nenhuma release anterior para deletar.");
+}
 
-console.log('✅ Tudo feito. Release publicada com sucesso!');
+// Criando a release com o caminho do arquivo e nome ajustados
+run(`"${ghPath}" release create v${version} "${setupFile}" --title "Versão ${version}" --notes "Automático"`);
+
+console.log('✅ Tudo feito. Release publicada com sucesso, patrão!');
