@@ -43,6 +43,6 @@ try {
 }
 
 // Criando a release com o caminho do arquivo e nome ajustados
-run(`"${ghPath}" release create v${version} "${setupFile}" --title "Versão ${version}" --notes "Automático"`);
+run(`"${ghPath}" release create v${version} "${setupFile}" "C:/guihub-release/latest.yml" --title "Versão ${version}" --notes "Automático"`);
 
-console.log('✅ Tudo feito. Release publicada com sucesso, patrão!');
+console.log('✅ Tudo feito. Release publicada com sucesso, patrão!');gi

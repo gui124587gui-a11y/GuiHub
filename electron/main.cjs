@@ -364,6 +364,8 @@ function createWindow() {
     // icon: path.join(__dirname, '../public/icon.png')
   });
 
+  autoUpdater.checkForUpdatesAndNotify();
+
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
     mainWindow?.focus();
