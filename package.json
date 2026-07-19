@@ -1,7 +1,7 @@
 {
   "name": "guihub",
   "productName": "GuiHub",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -85,7 +85,6 @@
     "extraMetadata": {
       "main": "electron/main.cjs"
     },
-    // ADICIONE ESTA PARTE ABAIXO
     "releaseInfo": {
       "releaseNotesFile": "release-notes.md"
     }
