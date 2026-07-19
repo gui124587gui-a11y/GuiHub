@@ -451,10 +451,25 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    console.log('AutoUpdater: atualização baixada', info);
-    if (mainWindow) {
-      mainWindow.webContents.send('update-status', { status: 'update-downloaded', info });
-    }
+  console.log('AutoUpdater: atualização baixada', info);
+  
+  // 'info.releaseNotes' vem do seu arquivo 'latest.yml' no GitHub
+  const releaseNotes = info.releaseNotes || 'Nenhuma nota de atualização fornecida.';
+
+   const dialogOpts = {
+     type: 'info',
+     buttons: ['Reiniciar agora', 'Depois'],
+     title: 'Atualização pronta',
+     message: 'Uma nova versão está pronta para ser instalada!',
+     detail: `O que mudou:\n\n${releaseNotes}\n\nDeseja reiniciar agora para aplicar?`
+   };
+
+   dialog.showMessageBox(mainWindow, dialogOpts).then((result) => {
+     if (result.response === 0) {
+       autoUpdater.quitAndInstall();
+     }
+   });
+ });
 
     const dialogOpts = {
       type: 'info',

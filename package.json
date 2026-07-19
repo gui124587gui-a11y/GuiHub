@@ -1,7 +1,7 @@
 {
   "name": "guihub",
   "productName": "GuiHub",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -60,6 +60,7 @@
     "vite-tsconfig-paths": "^5.1.4",
     "wait-on": "^9.0.10"
   },
+
   "build": {
     "appId": "com.guihub.app",
     "productName": "GuiHub",
@@ -83,6 +84,9 @@
     ],
     "extraMetadata": {
       "main": "electron/main.cjs"
+    },
+    // ADICIONE ESTA PARTE ABAIXO
+    "releaseInfo": {
+      "releaseNotesFile": "release-notes.md"
     }
-  }
 }
