@@ -364,8 +364,6 @@ function createWindow() {
     // icon: path.join(__dirname, '../public/icon.png')
   });
 
-  autoUpdater.checkForUpdatesAndNotify();
-
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
     mainWindow?.focus();
@@ -410,40 +408,53 @@ function createWindow() {
 }
 
 function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = false;
   autoUpdater.allowPrerelease = false;
 
   autoUpdater.on('checking-for-update', () => {
     console.log('AutoUpdater: verificando atualizações...');
     if (mainWindow) {
-      mainWindow.webContents.send('update-status', { status: 'checking' });
+      mainWindow.webContents.send('update-message', { status: 'checking' });
     }
   });
 
   autoUpdater.on('update-available', (info) => {
     console.log('AutoUpdater: atualização disponível', info);
     if (mainWindow) {
-      mainWindow.webContents.send('update-status', { status: 'update-available', info });
+      mainWindow.webContents.send('update-message', { status: 'update-available', info });
+    }
+
+    const prefs = store.get('update.preferences', { autoDownload: false });
+    if (prefs.autoDownload) {
+      autoUpdater.downloadUpdate().catch((err) => {
+        console.error('Erro ao iniciar download automático:', err);
+        if (mainWindow) {
+          mainWindow.webContents.send('update-message', { status: 'error', error: String(err) });
+        }
+      });
+      if (mainWindow) {
+        mainWindow.webContents.send('update-message', { status: 'download-started' });
+      }
     }
   });
 
   autoUpdater.on('update-not-available', (info) => {
     console.log('AutoUpdater: nenhuma atualização disponível', info);
     if (mainWindow) {
-      mainWindow.webContents.send('update-status', { status: 'update-not-available', info });
+      mainWindow.webContents.send('update-message', { status: 'update-not-available', info });
     }
   });
 
   autoUpdater.on('error', (err) => {
     console.error('AutoUpdater error:', err);
     if (mainWindow) {
-      mainWindow.webContents.send('update-status', { status: 'error', error: err?.message || String(err) });
+      mainWindow.webContents.send('update-message', { status: 'error', error: err?.message || String(err) });
     }
   });
 
   autoUpdater.on('download-progress', (progressObj) => {
     if (mainWindow) {
-      mainWindow.webContents.send('update-status', {
+      mainWindow.webContents.send('update-message', {
         status: 'download-progress',
         progress: progressObj.percent,
         transferred: progressObj.transferred,
@@ -453,41 +464,10 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-  console.log('AutoUpdater: atualização baixada', info);
-  
-  // 'info.releaseNotes' vem do seu arquivo 'latest.yml' no GitHub
-  const releaseNotes = info.releaseNotes || 'Nenhuma nota de atualização fornecida.';
-
-   const dialogOpts = {
-     type: 'info',
-     buttons: ['Reiniciar agora', 'Depois'],
-     title: 'Atualização pronta',
-     message: 'Uma nova versão está pronta para ser instalada!',
-     detail: `O que mudou:\n\n${releaseNotes}\n\nDeseja reiniciar agora para aplicar?`
-   };
-
-   dialog.showMessageBox(mainWindow, dialogOpts).then((result) => {
-     if (result.response === 0) {
-       autoUpdater.quitAndInstall();
-     }
-   });
- });
-
-    const dialogOpts = {
-      type: 'info',
-      buttons: ['Reiniciar agora', 'Depois'],
-      title: 'Atualização pronta',
-      message: 'Uma nova versão foi baixada. Reinicie o app para aplicar a atualização.',
-      detail: 'Ao reiniciar, a atualização será instalada automaticamente.'
-    };
-
-    dialog.showMessageBox(mainWindow, dialogOpts).then((result) => {
-      if (result.response === 0) {
-        autoUpdater.quitAndInstall();
-      }
-    }).catch(err => {
-      console.error('Erro ao exibir diálogo de atualização:', err);
-    });
+    console.log('AutoUpdater: atualização baixada', info);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-message', { status: 'update-downloaded', info });
+    }
   });
 }
 
@@ -615,12 +595,6 @@ app.on('ready', () => {
 
   createWindow();
   createTray();
-
-  if (app.isPackaged) {
-    autoUpdater.checkForUpdates().catch((err) => {
-      console.warn('AutoUpdater startup check failed:', err);
-    });
-  }
 });
 
 app.setAsDefaultProtocolClient('guihub');
@@ -677,6 +651,48 @@ ipcMain.handle('checkForUpdates', async () => {
     return { ok: true };
   } catch (err) {
     console.error('Erro ao checar atualizações:', err);
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('downloadUpdate', async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { ok: true };
+  } catch (err) {
+    console.error('Erro ao iniciar download da atualização:', err);
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('installUpdate', async () => {
+  try {
+    autoUpdater.quitAndInstall();
+    return { ok: true };
+  } catch (err) {
+    console.error('Erro ao instalar atualização:', err);
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('getUpdatePreferences', async () => {
+  try {
+    const prefs = store.get('update.preferences', { autoDownload: false });
+    return { ok: true, prefs };
+  } catch (err) {
+    console.error('Erro ao obter preferências de atualização:', err);
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('setUpdatePreferences', async (_event, prefs) => {
+  try {
+    const existing = store.get('update.preferences', {});
+    const newPrefs = { ...existing, ...prefs };
+    store.set('update.preferences', newPrefs);
+    return { ok: true, prefs: newPrefs };
+  } catch (err) {
+    console.error('Erro ao salvar preferências de atualização:', err);
     return { ok: false, error: String(err) };
   }
 });

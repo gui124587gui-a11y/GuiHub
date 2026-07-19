@@ -30,7 +30,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   searchFilesystem: (query) => ipcRenderer.invoke('search-filesystem', query),
   clearStoreData: () => ipcRenderer.invoke('clearStoreData'),
   checkForUpdates: () => ipcRenderer.invoke('checkForUpdates'),
-  onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_event, status) => callback(status)),
+  downloadUpdate: () => ipcRenderer.invoke('downloadUpdate'),
+  installUpdate: () => ipcRenderer.invoke('installUpdate'),
+  getUpdatePreferences: () => ipcRenderer.invoke('getUpdatePreferences'),
+  setUpdatePreferences: (prefs) => ipcRenderer.invoke('setUpdatePreferences', prefs),
+  onUpdateMessage: (callback) => ipcRenderer.on('update-message', (_event, status) => callback(status)),
   // Installer Magic
   installerStart: (softwareName) => ipcRenderer.invoke('installer:start', softwareName),
   installerOnStatus: (callback) => ipcRenderer.on('installer:status', (event, status) => callback(status)),

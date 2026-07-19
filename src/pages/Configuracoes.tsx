@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Settings, User, Sun, Moon, Bell, Globe, Monitor, Keyboard, RefreshCw, Info, CheckCircle2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
@@ -9,6 +9,107 @@ export default function Configuracoes() {
   const [emailInput, setEmailInput] = useState(userProfile.email);
   const [copyrightInput, setCopyrightInput] = useState(appMetadata.copyrightYear);
   const [descriptionInput, setDescriptionInput] = useState(appMetadata.description);
+  const [updateStatus, setUpdateStatus] = useState('idle');
+  const [updateMessage, setUpdateMessage] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
+  const [updateReady, setUpdateReady] = useState(false);
+  const [autoDownload, setAutoDownload] = useState(false);
+
+  useEffect(() => {
+    const loadPrefs = async () => {
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.getUpdatePreferences) {
+        const result = await (window as any).electronAPI.getUpdatePreferences();
+        if (result?.ok && result?.prefs) {
+          setAutoDownload(result.prefs.autoDownload ?? false);
+        }
+      }
+    };
+
+    loadPrefs();
+
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.onUpdateMessage) {
+      (window as any).electronAPI.onUpdateMessage((status: any) => {
+        setUpdateStatus(status.status);
+
+        switch (status.status) {
+          case 'checking':
+            setUpdateMessage('Verificando atualizações...');
+            setDownloadProgress(null);
+            setUpdateReady(false);
+            break;
+          case 'update-available':
+            setUpdateMessage('Nova versão encontrada! Deseja baixar agora?');
+            setDownloadProgress(null);
+            setUpdateReady(false);
+            break;
+          case 'update-not-available':
+            setUpdateMessage('Nenhuma atualização disponível.');
+            setDownloadProgress(null);
+            setUpdateReady(false);
+            break;
+          case 'download-started':
+            setUpdateMessage('Download iniciado...');
+            setDownloadProgress(0);
+            setUpdateReady(false);
+            break;
+          case 'download-progress':
+            setUpdateMessage(`Baixando atualização: ${Math.round(status.progress)}%`);
+            setDownloadProgress(Math.round(status.progress));
+            break;
+          case 'update-downloaded':
+            setUpdateMessage('Atualização baixada! Pronto para instalar e reiniciar.');
+            setDownloadProgress(100);
+            setUpdateReady(true);
+            break;
+          case 'error':
+            setUpdateMessage(`Erro: ${status.error || 'Falha ao verificar atualização.'}`);
+            setDownloadProgress(null);
+            setUpdateReady(false);
+            break;
+          default:
+            break;
+        }
+      });
+    }
+  }, []);
+
+  const handleToggleAutoDownload = async () => {
+    const newValue = !autoDownload;
+    setAutoDownload(newValue);
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.setUpdatePreferences) {
+      await (window as any).electronAPI.setUpdatePreferences({ autoDownload: newValue });
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.checkForUpdates) {
+      setUpdateStatus('checking');
+      setUpdateMessage('Verificando atualizações...');
+      const res = await (window as any).electronAPI.checkForUpdates();
+      if (!res?.ok) {
+        setUpdateStatus('error');
+        setUpdateMessage(`Erro ao verificar atualizações: ${res?.error ?? 'desconhecido'}`);
+      }
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.downloadUpdate) {
+      setUpdateStatus('download-started');
+      setUpdateMessage('Iniciando download...');
+      const res = await (window as any).electronAPI.downloadUpdate();
+      if (!res?.ok) {
+        setUpdateStatus('error');
+        setUpdateMessage(`Erro ao iniciar download: ${res?.error ?? 'desconhecido'}`);
+      }
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.installUpdate) {
+      await (window as any).electronAPI.installUpdate();
+    }
+  };
 
   const handleClearStore = async () => {
     if (window.confirm('Tem certeza que quer limpar todos os dados? Isso resetará tudo!')) {
@@ -247,50 +348,87 @@ export default function Configuracoes() {
               {activeTab === 'atualizacoes' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-semibold text-textPrimary mb-6">Atualizações</h2>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center justify-between p-4 rounded-xl bg-cardHover">
-                        <div>
-                          <p className="font-medium text-textPrimary">Atualizações via GitHub Releases</p>
-                          <p className="text-sm text-textSecondary">O app checa e baixa atualizações automaticamente.</p>
-                        </div>
+                  <div className="space-y-6">
+                    <div className="flex flex-col gap-4 p-6 rounded-3xl bg-cardHover">
+                      <div className="flex flex-col gap-2">
+                        <p className="font-medium text-textPrimary">Atualizações via GitHub Releases</p>
+                        <p className="text-sm text-textSecondary">
+                          O app verifica e baixa atualizações quando disponível. Você pode controlar se o download deve ser automático.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <button
                           className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-all"
-                          onClick={async () => {
-                            if (typeof window !== 'undefined' && (window as any).electronAPI?.checkForUpdates) {
-                              const res = await (window as any).electronAPI.checkForUpdates();
-                              if (res?.ok) {
-                                alert('Verificação iniciada. Se houver atualização, ela será baixada automaticamente.');
-                              } else {
-                                alert('Erro ao verificar atualizações: ' + (res?.error || 'desconhecido'));
-                              }
-                            } else {
-                              alert('A verificação de atualizações não está disponível nesta versão.');
-                            }
-                          }}
+                          onClick={handleCheckForUpdates}
                         >
-                          Verificar Novamente
+                          Verificar Atualizações
                         </button>
+                        <label className="flex items-center gap-3 text-textSecondary">
+                          <input
+                            type="checkbox"
+                            checked={autoDownload}
+                            onChange={handleToggleAutoDownload}
+                            className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                          />
+                          Baixar automaticamente
+                        </label>
                       </div>
-                      <div className="p-4 rounded-xl glass space-y-3">
-                        <p className="text-textSecondary text-sm">
-                          O auto-update oficial usa GitHub Releases. Configure seu repositório e defina o token
-                          em `GH_TOKEN` para publicar novas versões automaticamente.
-                        </p>
-                        <button
-                          className="px-4 py-2 rounded-xl glass text-textPrimary border border-primary/20 hover:bg-cardHover transition-all"
-                          onClick={() => {
-                            const url = 'https://update-js.vercel.app/';
-                            if (typeof window !== 'undefined' && (window as any).electronAPI?.openExternal) {
-                              (window as any).electronAPI.openExternal(url);
-                            } else {
-                              window.open(url, '_blank');
-                            }
-                          }}
-                        >
-                          Abrir site de updates
-                        </button>
+
+                      <div className="rounded-2xl border border-primary/10 bg-slate-950/40 p-4">
+                        <p className="text-sm text-textSecondary">Status da atualização</p>
+                        <p className="mt-2 text-textPrimary font-medium">{updateMessage || 'Nenhuma ação iniciada.'}</p>
+                        {downloadProgress !== null && (
+                          <div className="mt-3 h-3 rounded-full bg-primary/10 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: `${downloadProgress}%` }}
+                            />
+                          </div>
+                        )}
                       </div>
+
+                      {updateStatus === 'update-available' && !autoDownload && (
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            className="px-4 py-2 rounded-xl bg-secondary text-white hover:bg-secondary/90 transition-all"
+                            onClick={handleDownloadUpdate}
+                          >
+                            Baixar agora
+                          </button>
+                        </div>
+                      )}
+
+                      {updateReady && (
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            className="px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-500/90 transition-all"
+                            onClick={handleInstallUpdate}
+                          >
+                            Instalar e Reiniciar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-xl glass space-y-3">
+                      <p className="text-textSecondary text-sm">
+                        O auto-update oficial usa GitHub Releases. Configure seu repositório e defina o token
+                        em `GH_TOKEN` para publicar novas versões automaticamente.
+                      </p>
+                      <button
+                        className="px-4 py-2 rounded-xl glass text-textPrimary border border-primary/20 hover:bg-cardHover transition-all"
+                        onClick={() => {
+                          const url = 'https://update-js.vercel.app/';
+                          if (typeof window !== 'undefined' && (window as any).electronAPI?.openExternal) {
+                            (window as any).electronAPI.openExternal(url);
+                          } else {
+                            window.open(url, '_blank');
+                          }
+                        }}
+                      >
+                        Abrir site de updates
+                      </button>
                     </div>
                   </div>
                 </div>
