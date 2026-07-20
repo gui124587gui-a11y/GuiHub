@@ -17,6 +17,8 @@ try {
 }
 const path = require('path');
 let mainWindow = null;
+// hardware monitor (started after window is created)
+let hardwareMonitor;
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1400,
@@ -47,6 +49,15 @@ function createWindow() {
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
+
+    try {
+        hardwareMonitor = require(path.join(__dirname, 'hardwareMonitor'));
+        if (hardwareMonitor && typeof hardwareMonitor.startHardwareMonitor === 'function') {
+            hardwareMonitor.startHardwareMonitor(mainWindow);
+        }
+    } catch (err) {
+        console.warn('Failed to start hardware monitor:', err);
+    }
 }
 app.on('ready', createWindow);
 app.on('window-all-closed', () => {
@@ -87,6 +98,18 @@ ipcMain.handle('execute-command', async (event, command) => {
             }
         });
     });
+});
+
+// Provide latest hardware snapshot on-demand
+ipcMain.handle('hardware-get-stats', async () => {
+    try {
+        if (hardwareMonitor && typeof hardwareMonitor.getLatestStats === 'function') {
+            return hardwareMonitor.getLatestStats();
+        }
+        return null;
+    } catch (error) {
+        return null;
+    }
 });
 
 // Auto-update handlers (if available)

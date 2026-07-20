@@ -10,6 +10,7 @@ import Favoritos from '@/pages/Favoritos';
 import Pesquisa from '@/pages/Pesquisa';
 import Backup from '@/pages/Backup';
 import Notas from '@/pages/Notas';
+import Notificacoes from '@/pages/Notificacoes';
 import Agenda from '@/pages/Agenda';
 import Links from '@/pages/Links';
 import Estatisticas from '@/pages/Estatisticas';
@@ -18,9 +19,13 @@ import Historico from '@/pages/Historico';
 import Configuracoes from '@/pages/Configuracoes';
 import InstallerMagic from '@/pages/InstallerMagic';
 import { useAppStore } from '@/store/useAppStore';
+import useAgendaAlarms from '@/hooks/useAgendaAlarms';
 
 export default function App() {
   const { activePage, theme } = useAppStore();
+
+  // register agenda alarms globally
+  useAgendaAlarms();
 
   useEffect(() => {
     document.body.classList.toggle('light', theme === 'light');
@@ -47,6 +52,7 @@ export default function App() {
           {activePage === 'musica' && <Musica />}
           {activePage === 'historico' && <Historico />}
           {activePage === 'configuracoes' && <Configuracoes />}
+          {activePage === 'notificacoes' && <Notificacoes />}
           {activePage === 'installer' && <InstallerMagic />}
         </main>
       </div>

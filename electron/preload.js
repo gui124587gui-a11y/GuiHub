@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onUpdateNotAvailable: (cb) => ipcRenderer.on('update-not-available', (e, info) => cb(info)),
     onUpdateProgress: (cb) => ipcRenderer.on('update-progress', (e, progress) => cb(progress)),
     onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', (e, info) => cb(info)),
+    // Hardware monitoring API
+    onHardwareUpdate: (cb) => ipcRenderer.on('hardware-update', (e, data) => cb(data)),
+    hardwareGetStats: () => ipcRenderer.invoke('hardware-get-stats'),
     // Store API (persist app state)
         setStoreData: (data) => ipcRenderer.invoke('set-store-data', data),
         getStoreData: async () => {

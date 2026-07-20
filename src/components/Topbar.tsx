@@ -58,11 +58,11 @@ export default function Topbar() {
       </div>
 
       <div className="flex items-center gap-4" style={{ WebkitAppRegion: "no-drag" } as any}>
-        <button className="relative p-3 rounded-xl hover:bg-cardHover transition-all">
+        <button onClick={() => setActivePage('notificacoes')} className="relative p-3 rounded-xl hover:bg-cardHover transition-all">
           <Bell size={20} className="text-textSecondary hover:text-textPrimary" />
           <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
         </button>
-        <button className="p-3 rounded-xl hover:bg-cardHover transition-all">
+        <button onClick={() => setActivePage('configuracoes')} className="p-3 rounded-xl hover:bg-cardHover transition-all">
           <Settings size={20} className="text-textSecondary hover:text-textPrimary" />
         </button>
         
