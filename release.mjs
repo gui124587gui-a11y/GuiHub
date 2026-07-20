@@ -42,13 +42,69 @@ run(`git push origin v${version} --force`);
 
 // 6. GitHub CLI (Publicação)
 console.log(`📤 Publicando no GitHub...`);
-try { 
-    run(`"${ghPath}" release delete v${version} -y`); 
-} catch (e) {
-    console.log("Nota: Nenhuma release anterior para deletar.");
+// Detectar disponibilidade do gh (podemos ter o gh em outro local) ou variável GH_TOKEN
+function detectGhCommand() {
+    try {
+        // tenta o path configurado
+        execSync(`"${ghPath}" --version`, { stdio: 'ignore' });
+        return `"${ghPath}"`;
+    } catch (e) {
+        try {
+            // tenta comando em PATH
+            execSync('gh --version', { stdio: 'ignore', shell: true });
+            return 'gh';
+        } catch (e2) {
+            return null;
+        }
+    }
 }
 
-// Criando a release com o caminho do arquivo e nome ajustados
-run(`"${ghPath}" release create v${version} "${setupFile}" "C:/guihub-release/latest.yml" --title "Versão ${version}" --notes "Automático"`);
+const ghCmd = detectGhCommand();
 
-console.log('✅ Tudo feito. Release publicada com sucesso, patrão!');gi
+// If GH_TOKEN is not set in the environment, attempt to read a local
+// `.gh_token` file in the repository root. This file should NOT be
+// committed to version control. Add `.gh_token` to your `.gitignore`.
+try {
+    if (!process.env.GH_TOKEN) {
+        // attempt to read from .gh_token (synchronous read is fine here)
+        try {
+            const token = readFileSync('./.gh_token', 'utf8').trim();
+            if (token) process.env.GH_TOKEN = token;
+        } catch (e) {
+            // no local token file
+        }
+    }
+} catch (e) {
+    // ignore
+}
+
+if (!ghCmd && !process.env.GH_TOKEN) {
+    console.log('⚠️ GitHub CLI não encontrado e GH_TOKEN não configurado. Pulando publicação automática.');
+    console.log('Se quiser publicar automaticamente, instale/autorize o `gh` (gh auth login) ou exporte GH_TOKEN com permissão de repo.');
+} else {
+    // tenta checar autenticação (se possível)
+    let authenticated = false;
+    if (process.env.GH_TOKEN) {
+        authenticated = true;
+    } else if (ghCmd) {
+        try {
+            execSync(`${ghCmd} auth status`, { stdio: 'ignore', shell: true });
+            authenticated = true;
+        } catch (e) {
+            authenticated = false;
+        }
+    }
+
+    if (!authenticated) {
+        console.log('⚠️ GitHub CLI detectado porém não autenticado. Pulando publicação automática.');
+        console.log('Execute `gh auth login` ou exporte `GH_TOKEN` para habilitar publicação.');
+    } else {
+        try {
+            try { run(`${ghCmd} release delete v${version} -y`); } catch (e) { console.log('Nota: Nenhuma release anterior para deletar.'); }
+            run(`${ghCmd} release create v${version} "${setupFile}" "C:/guihub-release/latest.yml" --title "Versão ${version}" --notes "Automático"`);
+            console.log('✅ Tudo feito. Release publicada com sucesso!');
+        } catch (err) {
+            console.error('Erro ao publicar com GitHub CLI:', err);
+        }
+    }
+}

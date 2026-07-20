@@ -13,6 +13,9 @@ dist-ssr
 *.local
 .env
 
+# Local GitHub token for release script (do NOT commit)
+.gh_token
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
