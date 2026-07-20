@@ -1521,6 +1521,7 @@ const extractGUID = (str) => {
 };
 
 // --- Uninstaller Magic IPC ---
+// --- Uninstaller Magic IPC ---
 ipcMain.handle('uninstaller:detect', async (event, softwareName) => {
   if (!softwareName) {
     throw new Error('Nome do software não informado');
@@ -1533,14 +1534,6 @@ ipcMain.handle('uninstaller:detect', async (event, softwareName) => {
 
     // Use IA to detect which program matches
     const programList = installedPrograms.map(p => p.name).join('\n');
-    const systemPrompt = `Você é um assistente que ajuda a identificar programas instalados no Windows. Dado uma lista de programas instalados e um nome de programa procurado, identifique qual programa é o mais provável. Responda APENAS com o nome exato do programa na lista, sem nenhum texto adicional.
-
-Lista de programas instalados:
-${programList}
-
-Programa procurado: ${softwareName}
-
-Se não encontrar um match exato, procure por similaridade.`;
 
     const systemPromptForIA = 'Você é um assistente que identifica programas instalados no Windows. Responda APENAS com o nome exato do programa encontrado na lista, sem nenhum texto adicional.';
     
@@ -1555,9 +1548,13 @@ Se não encontrar um match exato, procure por similaridade.`;
       throw new Error('Programa não encontrado na lista de programas instalados');
     }
 
+    // Send event to frontend
     if (mainWindow) {
       mainWindow.webContents.send('uninstaller:detected', detected);
     }
+
+    // Also return the value
+    return detected;
   } catch (err) {
     console.error('Detect error:', err);
     throw err;

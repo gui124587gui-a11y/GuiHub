@@ -42,7 +42,7 @@ interface Window {
     installerOnNeedsManual: (callback: () => void) => void;
     installerConfirmComplete: () => Promise<boolean>;
     // Uninstaller Magic
-    uninstallerDetect: (softwareName: string) => Promise<void>;
+    uninstallerDetect: (softwareName: string) => Promise<string>;
     uninstallerStart: (softwareName: string) => Promise<void>;
     uninstallerOnStatus: (callback: (status: StatusUpdate) => void) => void;
     uninstallerOnNeedsManual: (callback: () => void) => void;

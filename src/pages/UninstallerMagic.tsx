@@ -65,9 +65,24 @@ export default function UninstallerMagic() {
 
     try {
       // Chama IA para detectar o software correto
-      await window.electronAPI?.uninstallerDetect(softwareName.trim());
+      const detected = await window.electronAPI?.uninstallerDetect(softwareName.trim());
+      if (detected) {
+        setDetectedSoftware(detected);
+        setShowConfirmModal(true);
+      } else {
+        throw new Error('Software não detectado');
+      }
     } catch (err) {
       console.error('Uninstall detect error:', err);
+      setStatusLogs((prev) => [
+        ...prev,
+        {
+          step: 1,
+          totalSteps: 5,
+          text: `Erro ao detectar: ${err instanceof Error ? err.message : 'Erro desconhecido'}`,
+          status: 'error'
+        }
+      ]);
       setIsUninstalling(false);
     }
   };
