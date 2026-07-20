@@ -26,4 +26,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
             return res;
         },
         clearStoreData: () => ipcRenderer.invoke('clear-store-data'),
+    // Installer Magic API
+    installerStart: (softwareName) => ipcRenderer.invoke('installer:start', softwareName),
+    installerConfirmComplete: () => ipcRenderer.invoke('installer:confirmComplete'),
+    installerOnStatus: (cb) => ipcRenderer.on('installer:status', (e, status) => cb(status)),
+    installerOnNeedsManual: (cb) => ipcRenderer.on('installer:needs-manual', cb),
+    // Uninstaller Magic API
+    uninstallerDetect: (softwareName) => ipcRenderer.invoke('uninstaller:detect', softwareName),
+    uninstallerStart: (softwareName) => ipcRenderer.invoke('uninstaller:start', softwareName),
+    uninstallerConfirmComplete: () => ipcRenderer.invoke('uninstaller:confirmComplete'),
+    uninstallerOnStatus: (cb) => ipcRenderer.on('uninstaller:status', (e, status) => cb(status)),
+    uninstallerOnNeedsManual: (cb) => ipcRenderer.on('uninstaller:needs-manual', cb),
+    uninstallerOnDetected: (cb) => ipcRenderer.on('uninstaller:detected', (e, software) => cb(software)),
 });

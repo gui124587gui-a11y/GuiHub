@@ -18,6 +18,7 @@ import Musica from '@/pages/Musica';
 import Historico from '@/pages/Historico';
 import Configuracoes from '@/pages/Configuracoes';
 import InstallerMagic from '@/pages/InstallerMagic';
+import UninstallerMagic from '@/pages/UninstallerMagic';
 import { useAppStore } from '@/store/useAppStore';
 import useAgendaAlarms from '@/hooks/useAgendaAlarms';
 
@@ -54,6 +55,7 @@ export default function App() {
           {activePage === 'configuracoes' && <Configuracoes />}
           {activePage === 'notificacoes' && <Notificacoes />}
           {activePage === 'installer' && <InstallerMagic />}
+          {activePage === 'uninstaller' && <UninstallerMagic />}
         </main>
       </div>
     </div>

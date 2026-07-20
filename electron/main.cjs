@@ -1363,3 +1363,221 @@ ipcMain.handle('installer:confirmComplete', async () => {
   currentTempFilePath = null;
   return true;
 });
+
+// --- Uninstaller Magic Functions ---
+const getInstalledPrograms = async () => {
+  return new Promise((resolve) => {
+    try {
+      const { execSync } = require('child_process');
+      // Use PowerShell to get installed programs with display names
+      const command = `Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Where-Object { $_.DisplayName -ne $null } | Select-Object DisplayName, UninstallString | ConvertTo-Json`;
+      
+      const result = execSync(`powershell -Command "${command}"`, { 
+        encoding: 'utf8',
+        maxBuffer: 10 * 1024 * 1024 
+      });
+      
+      let programs = [];
+      try {
+        const parsed = JSON.parse(result);
+        programs = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) {
+        programs = [];
+      }
+      
+      // Filter and format
+      const installedPrograms = programs
+        .filter(p => p.DisplayName && p.UninstallString)
+        .map(p => ({
+          name: p.DisplayName,
+          uninstallString: p.UninstallString
+        }))
+        .slice(0, 100); // Limit to 100 programs
+      
+      resolve(installedPrograms);
+    } catch (err) {
+      console.error('Error getting installed programs:', err);
+      resolve([]);
+    }
+  });
+};
+
+const startUninstallation = async (detectedSoftwareName, sendStatus) => {
+  try {
+    sendStatus({ step: 1, totalSteps: 5, text: 'Preparando desinstalação...', status: 'in-progress' });
+    
+    // Get installed programs
+    const installedPrograms = await getInstalledPrograms();
+    console.log('Installed programs:', installedPrograms.length);
+    
+    // Find the exact match
+    const program = installedPrograms.find(p => 
+      p.name.toLowerCase() === detectedSoftwareName.toLowerCase()
+    );
+    
+    if (!program) {
+      throw new Error(`Programa não encontrado: ${detectedSoftwareName}`);
+    }
+    
+    sendStatus({ step: 2, totalSteps: 5, text: `Programa encontrado: ${program.name}`, status: 'success' });
+    
+    // Get silent uninstall flag from IA
+    const systemPrompt = 'Você é um especialista em desinstalação de softwares no Windows. Responda APENAS com a flag de desinstalação silenciosa para o programa especificado, sem nenhum texto adicional. Exemplos: /S, /quiet, --silent, -uninstall /S';
+    sendStatus({ step: 3, totalSteps: 5, text: 'Consultando IA para flag de desinstalação silenciosa...', status: 'in-progress' });
+    sendStatus({ step: 3, totalSteps: 5, text: '→ Enviando prompt para IA...', status: 'in-progress', type: 'prompt-sent', content: { system: systemPrompt, user: detectedSoftwareName } });
+    
+    const silentFlag = await callOpenRouter(systemPrompt, detectedSoftwareName);
+    sendStatus({ step: 3, totalSteps: 5, text: '← Resposta da IA recebida', status: 'success', type: 'ai-response', content: silentFlag });
+    sendStatus({ step: 3, totalSteps: 5, text: `Flag silenciosa: ${silentFlag}`, status: 'success' });
+    
+    // Step 4: Extract uninstall command and try silent uninstall
+    sendStatus({ step: 4, totalSteps: 5, text: 'Iniciando desinstalação silenciosa...', status: 'in-progress' });
+    
+    let silentSuccess = false;
+    const uninstallString = program.uninstallString;
+    
+    // Parse uninstall string (e.g., "C:\Program Files\...\uninstall.exe /S" or "msiexec.exe /x {GUID} /quiet")
+    const uninstallPromise = new Promise((resolve) => {
+      try {
+        let command = uninstallString;
+        let args = [];
+        
+        // If it contains msiexec, we need special handling
+        if (uninstallString.toLowerCase().includes('msiexec')) {
+          command = 'msiexec.exe';
+          args = ['/x', extractGUID(uninstallString) || uninstallString, '/quiet'];
+        } else {
+          // Try to extract executable and arguments
+          const match = uninstallString.match(/^"([^"]+)"(.*)$/) || uninstallString.match(/^(\S+)(.*)$/);
+          if (match) {
+            command = match[1];
+            const argString = (match[2] || '').trim();
+            if (argString) {
+              args.push(argString, silentFlag);
+            } else {
+              args.push(silentFlag);
+            }
+          }
+        }
+        
+        console.log('Uninstall command:', command);
+        console.log('Uninstall args:', args);
+        
+        const uninstallProcess = spawn(command, args, {
+          detached: false,
+          stdio: 'ignore'
+        });
+        
+        const timeout = setTimeout(() => {
+          if (!uninstallProcess.killed) uninstallProcess.kill();
+          resolve(false);
+        }, 60000); // Wait 1 minute
+        
+        uninstallProcess.on('close', (code) => {
+          clearTimeout(timeout);
+          resolve(code === 0 || code === null); // Some installers return null on success
+        });
+        
+        uninstallProcess.on('error', (err) => {
+          console.error('Uninstall process error:', err);
+          clearTimeout(timeout);
+          resolve(false);
+        });
+      } catch (err) {
+        console.error('Error starting uninstall:', err);
+        resolve(false);
+      }
+    });
+    
+    silentSuccess = await uninstallPromise;
+    
+    if (silentSuccess) {
+      sendStatus({ step: 5, totalSteps: 5, text: 'Desinstalação concluída com sucesso!', status: 'success' });
+    } else {
+      sendStatus({ step: 5, totalSteps: 5, text: 'Desinstalação silenciosa falhou, abrindo desinstalador normal...', status: 'warning' });
+      // Try to open the uninstaller directly
+      try {
+        await shell.openPath(uninstallString);
+      } catch (err) {
+        // Try alternative method using cmd
+        const { exec } = require('child_process');
+        exec(uninstallString);
+      }
+      if (mainWindow) {
+        mainWindow.webContents.send('uninstaller:needs-manual');
+      }
+    }
+    
+  } catch (err) {
+    sendStatus({ step: 0, totalSteps: 5, text: `Erro: ${err.message}`, status: 'error' });
+    console.error('Uninstallation error:', err);
+  }
+};
+
+// Helper function to extract GUID from uninstall string
+const extractGUID = (str) => {
+  const guidMatch = str.match(/\{[A-F0-9\-]{36}\}/i);
+  return guidMatch ? guidMatch[0] : null;
+};
+
+// --- Uninstaller Magic IPC ---
+ipcMain.handle('uninstaller:detect', async (event, softwareName) => {
+  if (!softwareName) {
+    throw new Error('Nome do software não informado');
+  }
+
+  try {
+    // Get list of installed programs
+    const installedPrograms = await getInstalledPrograms();
+    console.log(`Found ${installedPrograms.length} installed programs`);
+
+    // Use IA to detect which program matches
+    const programList = installedPrograms.map(p => p.name).join('\n');
+    const systemPrompt = `Você é um assistente que ajuda a identificar programas instalados no Windows. Dado uma lista de programas instalados e um nome de programa procurado, identifique qual programa é o mais provável. Responda APENAS com o nome exato do programa na lista, sem nenhum texto adicional.
+
+Lista de programas instalados:
+${programList}
+
+Programa procurado: ${softwareName}
+
+Se não encontrar um match exato, procure por similaridade.`;
+
+    const systemPromptForIA = 'Você é um assistente que identifica programas instalados no Windows. Responda APENAS com o nome exato do programa encontrado na lista, sem nenhum texto adicional.';
+    
+    const detected = await callOpenRouter(systemPromptForIA, `Programa procurado: "${softwareName}"\n\nProgramas disponíveis:\n${programList}`);
+    
+    console.log('Detected software:', detected);
+
+    // Validate that the detected software is in the list
+    const isValid = installedPrograms.some(p => p.name.toLowerCase() === detected.toLowerCase());
+    
+    if (!isValid) {
+      throw new Error('Programa não encontrado na lista de programas instalados');
+    }
+
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:detected', detected);
+    }
+  } catch (err) {
+    console.error('Detect error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('uninstaller:start', async (event, softwareName) => {
+  if (!softwareName) {
+    throw new Error('Nome do software não informado');
+  }
+
+  // We'll use IPC events to send status updates
+  startUninstallation(softwareName, (status) => {
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', status);
+    }
+  });
+});
+
+// IPC to confirm manual uninstallation is complete
+ipcMain.handle('uninstaller:confirmComplete', async () => {
+  return true;
+});

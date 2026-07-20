@@ -20,6 +20,7 @@ import {
   Moon,
   History,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ const navItems = [
   { id: 'estatisticas', icon: BarChart3, label: 'Estatísticas' },
   { id: 'musica', icon: Music, label: 'Música' },
   { id: 'installer', icon: Sparkles, label: 'Instalador Mágico' },
+  { id: 'uninstaller', icon: Trash2, label: 'Desinstalador' },
   { id: 'historico', icon: History, label: 'Histórico' },
   { id: 'configuracoes', icon: Settings, label: 'Configurações' },
 ];
