@@ -1528,28 +1528,97 @@ ipcMain.handle('uninstaller:detect', async (event, softwareName) => {
   }
 
   try {
-    // Get list of installed programs
+    // Step 1: Get installed programs
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', {
+        step: 1,
+        totalSteps: 4,
+        text: 'Obtendo lista de programas instalados...',
+        status: 'in-progress'
+      });
+    }
+
     const installedPrograms = await getInstalledPrograms();
     console.log(`Found ${installedPrograms.length} installed programs`);
 
-    // Use IA to detect which program matches
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', {
+        step: 1,
+        totalSteps: 4,
+        text: `${installedPrograms.length} programas encontrados`,
+        status: 'success'
+      });
+    }
+
+    // Step 2: Use IA to detect which program matches
     const programList = installedPrograms.map(p => p.name).join('\n');
 
     const systemPromptForIA = 'Você é um assistente que identifica programas instalados no Windows. Responda APENAS com o nome exato do programa encontrado na lista, sem nenhum texto adicional.';
+    const userPrompt = `Programa procurado: "${softwareName}"\n\nProgramas disponíveis:\n${programList}`;
+
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', {
+        step: 2,
+        totalSteps: 4,
+        text: '→ Enviando prompt para IA...',
+        status: 'in-progress',
+        type: 'prompt-sent',
+        content: {
+          system: systemPromptForIA,
+          user: userPrompt
+        }
+      });
+    }
+
+    const detected = await callOpenRouter(systemPromptForIA, userPrompt);
     
-    const detected = await callOpenRouter(systemPromptForIA, `Programa procurado: "${softwareName}"\n\nProgramas disponíveis:\n${programList}`);
-    
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', {
+        step: 2,
+        totalSteps: 4,
+        text: '← Resposta da IA recebida',
+        status: 'success',
+        type: 'ai-response',
+        content: detected
+      });
+    }
+
     console.log('Detected software:', detected);
 
-    // Validate that the detected software is in the list
+    // Step 3: Validate that the detected software is in the list
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', {
+        step: 3,
+        totalSteps: 4,
+        text: `Validando: ${detected}`,
+        status: 'in-progress'
+      });
+    }
+
     const isValid = installedPrograms.some(p => p.name.toLowerCase() === detected.toLowerCase());
     
     if (!isValid) {
       throw new Error('Programa não encontrado na lista de programas instalados');
     }
 
-    // Send event to frontend
     if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', {
+        step: 3,
+        totalSteps: 4,
+        text: `Programa validado: ${detected}`,
+        status: 'success'
+      });
+    }
+
+    // Step 4: Send detection result
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', {
+        step: 4,
+        totalSteps: 4,
+        text: `Pronto para desinstalar: ${detected}`,
+        status: 'success'
+      });
+
       mainWindow.webContents.send('uninstaller:detected', detected);
     }
 
@@ -1557,6 +1626,14 @@ ipcMain.handle('uninstaller:detect', async (event, softwareName) => {
     return detected;
   } catch (err) {
     console.error('Detect error:', err);
+    if (mainWindow) {
+      mainWindow.webContents.send('uninstaller:status', {
+        step: 0,
+        totalSteps: 4,
+        text: `Erro: ${err.message}`,
+        status: 'error'
+      });
+    }
     throw err;
   }
 });
