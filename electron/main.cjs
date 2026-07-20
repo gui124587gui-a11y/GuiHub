@@ -1495,14 +1495,51 @@ const startUninstallation = async (detectedSoftwareName, sendStatus) => {
       sendStatus({ step: 5, totalSteps: 5, text: 'Desinstalação concluída com sucesso!', status: 'success' });
     } else {
       sendStatus({ step: 5, totalSteps: 5, text: 'Desinstalação silenciosa falhou, abrindo desinstalador normal...', status: 'warning' });
+      
       // Try to open the uninstaller directly
       try {
-        await shell.openPath(uninstallString);
+        let uninstallerPath = uninstallString;
+        
+        // Extract path if it has quotes or arguments
+        if (uninstallString.includes('"')) {
+          const match = uninstallString.match(/^"([^"]+)"/);
+          uninstallerPath = match ? match[1] : uninstallString;
+        } else {
+          // Get first part before any arguments
+          const parts = uninstallString.split(' ');
+          uninstallerPath = parts[0];
+        }
+        
+        console.log('Opening uninstaller:', uninstallerPath);
+        
+        // Check if it's msiexec or a regular exe
+        if (uninstallString.toLowerCase().includes('msiexec')) {
+          // For MSI, we need to execute the full command
+          const { exec } = require('child_process');
+          exec(uninstallString, (err) => {
+            if (err) {
+              console.error('Error executing msiexec:', err);
+            }
+          });
+        } else {
+          // For regular exe, try to open it
+          await shell.openPath(uninstallerPath);
+        }
       } catch (err) {
-        // Try alternative method using cmd
-        const { exec } = require('child_process');
-        exec(uninstallString);
+        console.error('Error opening uninstaller:', err);
+        // Last resort: try to execute the full string
+        try {
+          const { exec } = require('child_process');
+          exec(uninstallString, (error) => {
+            if (error) {
+              console.error('Error executing uninstall string:', error);
+            }
+          });
+        } catch (e) {
+          console.error('Fatal error trying to open uninstaller:', e);
+        }
       }
+      
       if (mainWindow) {
         mainWindow.webContents.send('uninstaller:needs-manual');
       }
