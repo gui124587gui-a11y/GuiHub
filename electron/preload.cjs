@@ -42,4 +42,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installerOnStatus: (callback) => ipcRenderer.on('installer:status', (event, status) => callback(status)),
   installerOnNeedsManual: (callback) => ipcRenderer.on('installer:needs-manual', callback),
   installerConfirmComplete: () => ipcRenderer.invoke('installer:confirmComplete'),
+  // Uninstaller Magic
+  uninstallerDetect: (softwareName) => ipcRenderer.invoke('uninstaller:detect', softwareName),
+  uninstallerStart: (softwareName) => ipcRenderer.invoke('uninstaller:start', softwareName),
+  uninstallerOnStatus: (callback) => ipcRenderer.on('uninstaller:status', (event, status) => callback(status)),
+  uninstallerOnNeedsManual: (callback) => ipcRenderer.on('uninstaller:needs-manual', callback),
+  uninstallerOnDetected: (callback) => ipcRenderer.on('uninstaller:detected', (event, software) => callback(software)),
+  uninstallerConfirmComplete: () => ipcRenderer.invoke('uninstaller:confirmComplete'),
 });
