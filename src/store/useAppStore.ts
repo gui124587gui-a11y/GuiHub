@@ -39,6 +39,22 @@ export interface Note {
   createdAt: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+}
+
 export interface AgendaEvent {
   id: string;
   title: string;
@@ -126,6 +142,11 @@ interface AppState {
   addNote: (note: Omit<Note, 'id' | 'createdAt'>) => void;
   updateNote: (id: string, note: Partial<Note>) => void;
   deleteNote: (id: string) => void;
+  chatConversations: ChatConversation[];
+  addChatConversation: (conversation: Omit<ChatConversation, 'id' | 'createdAt' | 'updatedAt'>) => ChatConversation;
+  updateChatConversation: (id: string, conversation: Partial<ChatConversation>) => void;
+  archiveChatConversation: (id: string) => void;
+  deleteChatConversation: (id: string) => void;
   agenda: AgendaEvent[];
   addAgendaEvent: (event: Omit<AgendaEvent, 'id'>) => void;
   updateAgendaEvent: (id: string, event: Partial<AgendaEvent>) => void;
@@ -173,6 +194,7 @@ const buildPersistedState = (state: AppState) => ({
   workspaces: state.workspaces,
   shortcuts: state.shortcuts,
   notes: state.notes,
+  chatConversations: state.chatConversations,
   agenda: state.agenda,
   links: state.links,
   favorites: state.favorites,
@@ -300,6 +322,44 @@ export const useAppStore = create<AppState>((set, get) => {
     })),
     deleteNote: (id) => updateAndPersist((state) => ({
       notes: state.notes.filter((item) => item.id !== id),
+    })),
+    chatConversations: [
+      {
+        id: 'chat-1',
+        title: 'Assistente de produtividade',
+        archived: false,
+        createdAt: nowPtBr(),
+        updatedAt: nowPtBr(),
+        messages: [
+          {
+            id: 'chat-1-msg-1',
+            role: 'assistant',
+            content: 'Olá! Eu posso te ajudar a organizar ideias, resumir tarefas e manter um histórico das conversas.',
+            timestamp: nowPtBr(),
+          },
+        ],
+      },
+    ],
+    addChatConversation: (conversation) => {
+      const created = {
+        id: crypto.randomUUID(),
+        createdAt: nowPtBr(),
+        updatedAt: nowPtBr(),
+        ...conversation,
+      };
+      updateAndPersist((state) => ({
+        chatConversations: [created, ...state.chatConversations],
+      }));
+      return created;
+    },
+    updateChatConversation: (id, conversation) => updateAndPersist((state) => ({
+      chatConversations: state.chatConversations.map((item) => item.id === id ? { ...item, ...conversation, updatedAt: nowPtBr() } : item),
+    })),
+    archiveChatConversation: (id) => updateAndPersist((state) => ({
+      chatConversations: state.chatConversations.map((item) => item.id === id ? { ...item, archived: !item.archived, updatedAt: nowPtBr() } : item),
+    })),
+    deleteChatConversation: (id) => updateAndPersist((state) => ({
+      chatConversations: state.chatConversations.filter((item) => item.id !== id),
     })),
     agenda: [
       { id: '1', title: 'Reunião com a equipe', date: todayIso(), time: '15:00', color: '#3B82F6', location: 'Discord', description: 'Revisar o dashboard.' },
@@ -451,6 +511,7 @@ export const useAppStore = create<AppState>((set, get) => {
           workspaces,
           shortcuts,
           notes,
+          chatConversations,
           agenda,
           links,
           favorites,
@@ -472,6 +533,7 @@ export const useAppStore = create<AppState>((set, get) => {
           workspaces: workspaces ?? state.workspaces,
           shortcuts: shortcuts ?? state.shortcuts,
           notes: notes ?? state.notes,
+          chatConversations: chatConversations ?? state.chatConversations,
           agenda: agenda ?? state.agenda,
           links: links ?? state.links,
           favorites: favorites ?? state.favorites,

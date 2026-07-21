@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return res;
   },
   setStoreData: (data) => ipcRenderer.invoke('setStoreData', data),
+  clearStoreData: () => ipcRenderer.invoke('clearStoreData'),
+  openRouterChat: async ({ systemPrompt, userPrompt }) => ipcRenderer.invoke('openRouterChat', { systemPrompt, userPrompt }),
   launchApp: (app) => ipcRenderer.invoke('launch-app', app),
   searchFilesystem: (query) => ipcRenderer.invoke('search-filesystem', query),
   clearStoreData: () => ipcRenderer.invoke('clearStoreData'),

@@ -21,6 +21,7 @@ import {
   History,
   Sparkles,
   Trash2,
+  Bot,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ const navItems = [
   { id: 'pesquisa', icon: Search, label: 'Pesquisa' },
   { id: 'backup', icon: HardDrive, label: 'Backup' },
   { id: 'monitor', icon: Activity, label: 'Monitor do PC' },
+  { id: 'chatbot', icon: Bot, label: 'Chatbot AI' },
   { id: 'notas', icon: FileText, label: 'Notas' },
   { id: 'agenda', icon: Calendar, label: 'Agenda' },
   { id: 'links', icon: Link, label: 'Links' },

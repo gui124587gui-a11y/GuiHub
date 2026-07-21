@@ -12,6 +12,7 @@ import Backup from '@/pages/Backup';
 import Notas from '@/pages/Notas';
 import Notificacoes from '@/pages/Notificacoes';
 import Agenda from '@/pages/Agenda';
+import Chatbot from '@/pages/Chatbot';
 import Links from '@/pages/Links';
 import Estatisticas from '@/pages/Estatisticas';
 import Musica from '@/pages/Musica';
@@ -46,6 +47,7 @@ export default function App() {
           {activePage === 'pesquisa' && <Pesquisa />}
           {activePage === 'backup' && <Backup />}
           {activePage === 'monitor' && <Monitor />}
+          {activePage === 'chatbot' && <Chatbot />}
           {activePage === 'notas' && <Notas />}
           {activePage === 'agenda' && <Agenda />}
           {activePage === 'links' && <Links />}

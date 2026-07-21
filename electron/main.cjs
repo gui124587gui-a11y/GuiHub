@@ -278,18 +278,27 @@ let tray = null;
 
 // Create tray icon
 function createTray() {
-  // Use a simple icon for now - we can create a native image
-  // For now, let's use a placeholder or the app's icon
-  // Let's try to use the public/favicon.svg as tray icon
-  const iconPath = path.join(__dirname, '../public/favicon.svg');
-  // But SVG may not work, so let's create a simple native image or use a built-in one
-  // For Windows, let's use a default or create a simple icon
+  // Prefer the packaged ICO icon on Windows for tray visibility
+  const iconPath = path.join(__dirname, '../build/icon.ico');
   let trayIcon;
+
   try {
-    trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    if (!fs.existsSync(iconPath)) {
+      throw new Error(`Tray icon not found: ${iconPath}`);
+    }
+    trayIcon = nativeImage.createFromPath(iconPath);
+    if (trayIcon.isEmpty()) {
+      throw new Error('Tray icon image is empty');
+    }
+    trayIcon = trayIcon.resize({ width: 16, height: 16 });
   } catch (e) {
-    // Fallback to empty icon
-    trayIcon = nativeImage.createEmpty();
+    console.error('Erro ao carregar ícone do tray:', e);
+    const fallbackIcon = path.join(__dirname, '../public/favicon.svg');
+    if (fs.existsSync(fallbackIcon)) {
+      trayIcon = nativeImage.createFromPath(fallbackIcon).resize({ width: 16, height: 16 });
+    } else {
+      trayIcon = nativeImage.createEmpty();
+    }
   }
 
   tray = new Tray(trayIcon);
@@ -1240,6 +1249,18 @@ ipcMain.handle('setStoreData', async (_event, data) => {
   } catch (err) {
     console.error('Erro ao salvar dados no store:', err);
     return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('openRouterChat', async (_event, { systemPrompt, userPrompt }) => {
+  try {
+    if (!systemPrompt || !userPrompt) {
+      throw new Error('systemPrompt e userPrompt são obrigatórios');
+    }
+    return await callOpenRouter(systemPrompt, userPrompt);
+  } catch (err) {
+    console.error('Erro em openRouterChat:', err);
+    throw err;
   }
 });
 

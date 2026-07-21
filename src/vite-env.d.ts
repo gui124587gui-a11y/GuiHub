@@ -36,6 +36,7 @@ interface Window {
     launchApp: (app: any) => Promise<{ success: boolean; error?: string }>;
     searchFilesystem: (query: string) => Promise<any[]>;
     clearStoreData: () => Promise<boolean>;
+    openRouterChat: (params: { systemPrompt: string; userPrompt: string }) => Promise<string>;
     // Installer Magic
     installerStart: (softwareName: string) => Promise<void>;
     installerOnStatus: (callback: (status: StatusUpdate) => void) => void;
