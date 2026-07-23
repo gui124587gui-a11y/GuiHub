@@ -17,14 +17,9 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background: linear-gradient(135deg, #0B1220 0%, #111827 50%, #0F172A 100%);
+  background: #000000;
   color: #FFFFFF;
   transition: background 0.3s ease, color 0.3s ease;
-}
-
-body.light {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
-  color: #0f172a;
 }
 
 /* Custom Scrollbar */
@@ -34,64 +29,41 @@ body.light {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: #000000;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.4);
+  background: #660000;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.6);
-}
-
-body.light ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-body.light ::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.3);
-}
-
-body.light ::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.5);
+  background: #FF0000;
 }
 
 .glass {
-  background: rgba(17, 24, 39, 0.6);
+  background: #0A0A0A;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.25);
   transition: all 0.3s ease;
 }
 
-body.light .glass {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
 .glass-hover:hover {
-  background: rgba(31, 41, 55, 0.7);
-  border-color: rgba(59, 130, 246, 0.2);
+  background: #171717;
+  border-color: rgba(255, 0, 0, 0.6);
   transform: translateY(-2px);
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
 }
 
-body.light .glass-hover:hover {
-  background: rgba(241, 245, 249, 0.8);
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
-}
-
 .neon-glow {
-  box-shadow: 0 0 30px rgba(59, 130, 246, 0.4), 0 0 60px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.45);
   transition: box-shadow 0.3s ease;
 }
 
 .neon-glow:hover {
-  box-shadow: 0 0 40px rgba(59, 130, 246, 0.6), 0 0 80px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 40px rgba(255, 0, 0, 0.7);
 }
 
 @keyframes fadeIn {

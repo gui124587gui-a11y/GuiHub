@@ -275,7 +275,6 @@ const startInstallation = async (softwareName, sendStatus) => {
 let mainWindow = null;
 let authWindow = null;
 let tray = null;
-
 // Create tray icon
 function createTray() {
   // Prefer the packaged ICO icon on Windows for tray visibility
@@ -414,6 +413,7 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
 }
 
 function setupAutoUpdater() {
@@ -1222,7 +1222,16 @@ ipcMain.handle('system-uptime', async () => {
 ipcMain.handle('process-list', async () => {
   try {
     const processes = await si.processes();
-    return processes.list || [];
+    return (processes.list || [])
+      .map((process) => ({
+        pid: process.pid,
+        name: process.name || 'Processo sem nome',
+        cpu: Number(process.cpu) || 0,
+        mem: Number(process.mem) || 0,
+        memoryMb: (Number(process.memRss) || 0) / 1024,
+      }))
+      .sort((a, b) => (b.cpu + b.mem) - (a.cpu + a.mem))
+      .slice(0, 100);
   } catch (err) {
     console.error('Erro ao obter lista de processos:', err);
     return [];

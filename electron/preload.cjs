@@ -12,7 +12,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   spotifyRefreshToken: () => ipcRenderer.invoke('spotify-refresh-token'),
   spotifyApi: (options) => ipcRenderer.invoke('spotify-api', options),
   onSpotifyAuthSuccess: (callback) => ipcRenderer.on('spotify-auth-success', callback),
-  hardwareGetStats: () => ipcRenderer.invoke('hardware-get-stats'),
   getInstalledApps: () => ipcRenderer.invoke('get-installed-apps'),
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   selectFile: () => ipcRenderer.invoke('select-file'),
@@ -26,7 +25,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return res;
   },
   setStoreData: (data) => ipcRenderer.invoke('setStoreData', data),
-  clearStoreData: () => ipcRenderer.invoke('clearStoreData'),
   openRouterChat: async ({ systemPrompt, userPrompt }) => ipcRenderer.invoke('openRouterChat', { systemPrompt, userPrompt }),
   launchApp: (app) => ipcRenderer.invoke('launch-app', app),
   searchFilesystem: (query) => ipcRenderer.invoke('search-filesystem', query),

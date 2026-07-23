@@ -191,7 +191,7 @@ export default function Home() {
   return (
     <div className="p-4 overflow-y-auto h-[calc(100vh-80px)]">
       <h1 className="text-xl font-bold text-textPrimary mb-4">Início</h1>
-      {/* Linha 1 - Hardware (compact header) */}
+      {/* Monitor de hardware legado removido da interface.
       <div className="mb-6">
         <div className="flex items-stretch gap-4">
           {[
@@ -228,7 +228,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Linha 2 - Workspaces, Atalhos, Monitor */}
+      */}
+      {/* Workspaces e atalhos */}
       <div className="grid grid-cols-12 gap-3 mb-3">
         <div className="col-span-4">
           <Widget 

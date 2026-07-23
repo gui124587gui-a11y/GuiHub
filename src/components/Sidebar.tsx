@@ -7,7 +7,7 @@ import {
   Star,
   Search,
   HardDrive,
-  Activity,
+  ListFilter,
   FileText,
   Calendar,
   Link,
@@ -16,8 +16,6 @@ import {
   Settings,
   Menu,
   ChevronLeft,
-  Sun,
-  Moon,
   History,
   Sparkles,
   Trash2,
@@ -34,7 +32,7 @@ const navItems = [
   { id: 'favoritos', icon: Star, label: 'Favoritos' },
   { id: 'pesquisa', icon: Search, label: 'Pesquisa' },
   { id: 'backup', icon: HardDrive, label: 'Backup' },
-  { id: 'monitor', icon: Activity, label: 'Monitor do PC' },
+  { id: 'processos', icon: ListFilter, label: 'Processos pesados' },
   { id: 'chatbot', icon: Bot, label: 'Chatbot AI' },
   { id: 'notas', icon: FileText, label: 'Notas' },
   { id: 'agenda', icon: Calendar, label: 'Agenda' },
@@ -48,7 +46,7 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const { activePage, setActivePage, sidebarCollapsed, toggleSidebar, theme, toggleTheme } = useAppStore();
+  const { activePage, setActivePage, sidebarCollapsed, toggleSidebar } = useAppStore();
 
   return (
     <div className={cn(
@@ -58,13 +56,13 @@ export default function Sidebar() {
       {/* Logo and Hamburger */}
       <div className="p-4 border-b border-primary/10 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">G</span>
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+            <span className="text-white font-bold text-lg">A</span>
           </div>
           {!sidebarCollapsed && (
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                GuiHub
+                AnthonyHub
               </h1>
             </div>
           )}
@@ -100,22 +98,15 @@ export default function Sidebar() {
       {/* User Profile */}
       <div className="p-3 border-t border-primary/10">
         <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-cardHover transition-all cursor-pointer">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-sm">G</span>
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-sm">A</span>
           </div>
           {!sidebarCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-textPrimary">Gui</p>
+              <p className="text-sm font-semibold text-textPrimary">Anthony</p>
               <p className="text-xs text-textSecondary">Bem-vindo de volta!</p>
             </div>
           )}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg hover:bg-cardHover transition-colors flex-shrink-0"
-            title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
         </div>
       </div>
     </div>

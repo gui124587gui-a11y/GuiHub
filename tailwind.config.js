@@ -9,16 +9,16 @@ export default {
     },
     extend: {
       colors: {
-        background: "#0B1220",
-        card: "#111827",
-        cardHover: "#1F2937",
-        primary: "#3B82F6",
-        secondary: "#8B5CF6",
+        background: "#000000",
+        card: "#0A0A0A",
+        cardHover: "#171717",
+        primary: "#FF0000",
+        secondary: "#B00000",
         textPrimary: "#FFFFFF",
-        textSecondary: "#9CA3AF",
-        success: "#22C55E",
-        warning: "#F59E0B",
-        error: "#EF4444"
+        textSecondary: "#A3A3A3",
+        success: "#FF0000",
+        warning: "#FF0000",
+        error: "#FF0000"
       },
       borderRadius: {
         xl: "16px",

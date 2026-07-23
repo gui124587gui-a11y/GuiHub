@@ -70,13 +70,13 @@ export default function Topbar() {
         <div className="flex items-center gap-2 ml-4">
           <button 
             onClick={handleMinimize} 
-            className="p-2 rounded-lg hover:bg-yellow-500/20 text-textSecondary hover:text-yellow-400 transition-all"
+            className="p-2 rounded-lg hover:bg-primary/20 text-textSecondary hover:text-primary transition-all"
           >
             <Minus size={18} />
           </button>
           <button 
             onClick={handleMaximize} 
-            className="p-2 rounded-lg hover:bg-green-500/20 text-textSecondary hover:text-green-400 transition-all"
+            className="p-2 rounded-lg hover:bg-primary/20 text-textSecondary hover:text-primary transition-all"
           >
             <Square size={18} />
           </button>
