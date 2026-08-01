@@ -6,6 +6,8 @@ export default function Musica() {
   const [isConnected, setIsConnected] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [repeatState, setRepeatState] = useState<'off' | 'context' | 'track'>('off');
+  const [shuffleState, setShuffleState] = useState(false);
   const [volume, setVolume] = useState(50);
   const [progressMs, setProgressMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
@@ -33,7 +35,7 @@ export default function Musica() {
       if (isConnected) {
         fetchCurrentPlayback();
       }
-    }, 3000);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [isConnected]);
@@ -55,6 +57,8 @@ export default function Musica() {
       if (data && data.item) {
         setCurrentTrack(data.item);
         setIsPlaying(data.is_playing);
+        setRepeatState(data.repeat_state || 'off');
+        setShuffleState(data.shuffle_state || false);
         setProgressMs(data.progress_ms || 0);
         setDurationMs(data.item.duration_ms || 0);
         await loadRecommendations(data.item);
@@ -66,6 +70,32 @@ export default function Musica() {
     } catch (err) {
       console.error('Erro ao buscar faixa atual:', err);
       setStatusMessage('Não foi possível carregar a reprodução atual do Spotify.');
+    }
+  };
+
+  const toggleShuffle = async () => {
+    try {
+      const electronApi = (window as any).electronAPI;
+      const nextState = !shuffleState;
+      await electronApi.spotifyApi({ endpoint: `/me/player/shuffle?state=${nextState}`, method: 'PUT' });
+      setShuffleState(nextState);
+      setStatusMessage(nextState ? 'Reprodução aleatória ativada.' : 'Reprodução aleatória desativada.');
+    } catch (err) {
+      console.error('Erro ao alternar shuffle:', err);
+      setStatusMessage('Não foi possível alternar a reprodução aleatória.');
+    }
+  };
+
+  const cycleRepeat = async () => {
+    try {
+      const electronApi = (window as any).electronAPI;
+      const nextState = repeatState === 'off' ? 'context' : repeatState === 'context' ? 'track' : 'off';
+      await electronApi.spotifyApi({ endpoint: `/me/player/repeat?state=${nextState}`, method: 'PUT' });
+      setRepeatState(nextState);
+      setStatusMessage(nextState === 'off' ? 'Repetição desligada.' : nextState === 'context' ? 'Repetir álbum/contexto.' : 'Repetir faixa.');
+    } catch (err) {
+      console.error('Erro ao alternar repetição:', err);
+      setStatusMessage('Não foi possível alterar o modo de repetição.');
     }
   };
 
@@ -138,7 +168,7 @@ export default function Musica() {
 
     try {
       const electronApi = (window as any).electronAPI;
-      const res = await electronApi.spotifyApi({ endpoint: `/search?q=${encodeURIComponent(searchQuery.trim())}&type=track&limit=8` });
+      const res = await electronApi.spotifyApi({ endpoint: `/search?q=${encodeURIComponent(searchQuery.trim())}&type=track&limit=20` });
       const tracks = res?.tracks?.items || [];
       setSearchResults(tracks);
     } catch (err) {
@@ -373,7 +403,11 @@ export default function Musica() {
                       </div>
                     </div>
                     <div className="flex items-center justify-center gap-4 mb-6">
-                      <button className="p-3 rounded-full text-textSecondary hover:text-textPrimary transition-all">
+                      <button
+                        onClick={toggleShuffle}
+                        className={`p-3 rounded-full transition-all ${shuffleState ? 'bg-emerald-500/20 text-emerald-300' : 'text-textSecondary hover:text-textPrimary'}`}
+                        title="Reprodução aleatória"
+                      >
                         <Shuffle size={24} />
                       </button>
                       <button
@@ -394,7 +428,11 @@ export default function Musica() {
                       >
                         <SkipForward size={32} fill="currentColor" />
                       </button>
-                      <button className="p-3 rounded-full text-textSecondary hover:text-textPrimary transition-all">
+                      <button
+                        onClick={cycleRepeat}
+                        className={`p-3 rounded-full transition-all ${repeatState !== 'off' ? 'bg-emerald-500/20 text-emerald-300' : 'text-textSecondary hover:text-textPrimary'}`}
+                        title="Repetir reprodução"
+                      >
                         <Repeat size={24} />
                       </button>
                     </div>
