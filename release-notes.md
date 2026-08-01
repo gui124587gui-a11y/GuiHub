@@ -1,3 +1,9 @@
+# GuiHub v1.0.27
+
+## Música (Spotify) — diagnóstico
+- **Diagnóstico "Verificar Spotify" aprimorado:** agora mostra o erro exato ao carregar faixas de playlist (código HTTP e mensagem do Spotify) e testa também os detalhes da playlist, para identificar a causa exata.
+- **Carregamento de faixas com nova tentativa automática:** se a primeira chamada falhar (ex.: limite de requisições temporário), o app tenta uma segunda vez.
+
 # GuiHub v1.0.26
 
 ## Música (Spotify) — correções e melhorias

@@ -328,9 +328,14 @@ export default function Musica() {
     }
   };
 
-  const loadPlaylistTracks = async (playlistId: string) => {
+  const loadPlaylistTracks = async (playlistId: string, isRetry = false) => {
     try {
-      const res = await spotifyService.getPlaylistTracks(playlistId, 100, 0);
+      let res = await spotifyService.getPlaylistTracks(playlistId, 100, 0);
+      // Uma nova tentativa após uma falha transitória (ex.: rate limit)
+      if (res === null && !isRetry) {
+        await new Promise((r) => setTimeout(r, 800));
+        res = await spotifyService.getPlaylistTracks(playlistId, 100, 0);
+      }
       if (res === null) {
         const last = await getLastSpotifyError();
         console.error('loadPlaylistTracks failed, last log:', last);
@@ -686,9 +691,28 @@ export default function Musica() {
                   if (testSearch) {
                     const plSearch = await spotifyService.search('playlist', 'playlist', 1);
                     const pl = plSearch?.playlists?.items?.[0];
+                    console.log('Diagnóstico playlist de teste:', pl ? { id: pl.id, name: pl.name } : null);
                     if (pl) {
+                      // 1) Detalhes da playlist (GET /playlists/{id})
+                      let plDetail = 'não testado';
+                      const plInfo = await spotifyService.getPlaylist(pl.id);
+                      if (!plInfo) {
+                        const last = await electronApi.spotifyGetLastLog();
+                        plDetail = `FALHOU (${last?.status ? `HTTP ${last.status}` : (last?.error || 'null')})`;
+                      } else {
+                        plDetail = `ok (tracks.total=${plInfo.tracks?.total})`;
+                      }
+                      // 2) Faixas da playlist (GET /playlists/{id}/tracks)
                       const plTracks = await spotifyService.getPlaylistTracks(pl.id, 5, 0);
-                      tracksTest = plTracks ? `ok (${(plTracks.items || []).length} faixas em "${pl.name}")` : 'FALHOU (null)';
+                      if (plTracks) {
+                        tracksTest = `ok (${(plTracks.items || []).length} faixas em "${pl.name}")`;
+                      } else {
+                        const last = await electronApi.spotifyGetLastLog();
+                        console.log('Diagnóstico getPlaylistTracks erro:', last);
+                        const reason = last?.body && last.body !== 'null' ? ` ${last.body.slice(0, 140)}` : '';
+                        tracksTest = `FALHOU (${last?.status ? `HTTP ${last.status} ${last.statusText || ''}` : (last?.error || 'null')})${reason}`;
+                      }
+                      console.log('Diagnóstico getPlaylist:', plDetail);
                     }
                   }
                   console.log('Diagnóstico getPlaylistTracks:', tracksTest);
