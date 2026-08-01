@@ -12,6 +12,8 @@ export default function Musica() {
   const [progressMs, setProgressMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState<'track' | 'album' | 'artist' | 'playlist'>('track');
+  const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
   const [topTracks, setTopTracks] = useState<any[]>([]);
@@ -166,15 +168,23 @@ export default function Musica() {
     if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
 
+    setSearchLoading(true);
+    setStatusMessage(null);
+
     try {
       const electronApi = (window as any).electronAPI;
-      const res = await electronApi.spotifyApi({ endpoint: `/search?q=${encodeURIComponent(searchQuery.trim())}&type=track&limit=20` });
-      const tracks = res?.tracks?.items || [];
-      setSearchResults(tracks);
+      const res = await electronApi.spotifyApi({ endpoint: `/search?q=${encodeURIComponent(searchQuery.trim())}&type=${searchType}&limit=20&market=from_token` });
+      const results = res?.[searchType === 'track' ? 'tracks' : `${searchType}s`]?.items || [];
+      setSearchResults(results);
+      if (results.length === 0) {
+        setStatusMessage('Nenhum resultado encontrado para essa busca.');
+      }
     } catch (err) {
       console.error('Erro na busca por músicas:', err);
       setSearchResults([]);
-      setStatusMessage('Não foi possível buscar músicas no Spotify.');
+      setStatusMessage('Não foi possível buscar no Spotify.');
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -338,32 +348,60 @@ export default function Musica() {
         ) : (
           <div className="space-y-6">
             <div className="glass rounded-3xl p-8">
-              <form onSubmit={handleSearch} className="mb-6 flex items-center gap-3">
-                <div className="relative flex-1">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary"><Search size={18} /></div>
-                  <input
-                    type="text"
-                    placeholder="Buscar música por nome..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 rounded-2xl glass text-textPrimary placeholder-textSecondary focus:outline-none"
-                  />
+              <form onSubmit={handleSearch} className="mb-6 space-y-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                  <div className="relative flex-1">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary"><Search size={18} /></div>
+                    <input
+                      type="text"
+                      placeholder="Buscar música por nome..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 rounded-2xl glass text-textPrimary placeholder-textSecondary focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {['track', 'album', 'artist', 'playlist'].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setSearchType(type as any)}
+                        className={`rounded-full px-4 py-2 text-sm transition-all ${searchType === type ? 'bg-emerald-500 text-white' : 'bg-cardHover text-textSecondary hover:bg-white/5'}`}
+                      >
+                        {type === 'track' ? 'Faixas' : type === 'album' ? 'Álbum' : type === 'artist' ? 'Artistas' : 'Playlists'}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="submit" className="px-4 py-3 bg-primary rounded-2xl text-white">Buscar</button>
                 </div>
-                <button type="submit" className="px-4 py-2 bg-primary rounded-2xl text-white">Buscar</button>
+                {searchLoading && <div className="text-sm text-textSecondary">Buscando {searchType}...</div>}
               </form>
 
               {searchResults.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-textPrimary mb-2">Resultados</h3>
+                  <h3 className="text-lg font-semibold text-textPrimary mb-2">Resultados de {searchType === 'track' ? 'faixas' : searchType === 'album' ? 'álbuns' : searchType === 'artist' ? 'artistas' : 'playlists'}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {searchResults.map((t) => (
-                      <div key={t.id} className="p-3 rounded-xl bg-cardHover flex items-center gap-3">
-                        <img src={t.album.images[0]?.url} alt={t.name} className="w-12 h-12 rounded" />
-                        <div className="flex-1">
-                          <div className="font-medium text-textPrimary">{t.name}</div>
-                          <div className="text-xs text-textSecondary">{t.artists.map((a:any)=>a.name).join(', ')}</div>
+                    {searchResults.map((item) => (
+                      <div key={item.id || item.uri} className="p-3 rounded-xl bg-cardHover flex items-center gap-3">
+                        {item.images?.[0]?.url || item.album?.images?.[0]?.url ? (
+                          <img src={item.images?.[0]?.url || item.album?.images?.[0]?.url} alt={item.name} className="w-12 h-12 rounded" />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-white/5 flex items-center justify-center text-xs text-textSecondary">N/A</div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate font-medium text-textPrimary">{item.name || item.uri}</div>
+                          <div className="truncate text-xs text-textSecondary">
+                            {searchType === 'track' && item.artists?.map((a:any) => a.name).join(', ')}
+                            {searchType === 'album' && item.artists?.map((a:any) => a.name).join(', ')}
+                            {searchType === 'artist' && item.genres?.slice(0, 2).join(', ')}
+                            {searchType === 'playlist' && item.owner?.display_name}
+                          </div>
                         </div>
-                        <button onClick={() => playTrackByUri(t.uri)} className="px-3 py-2 bg-green-500 text-white rounded-xl">Play</button>
+                        {searchType === 'track' ? (
+                          <button onClick={() => playTrackByUri(item.uri)} className="px-3 py-2 bg-green-500 text-white rounded-xl">Play</button>
+                        ) : searchType === 'album' ? (
+                          <button onClick={() => viewAlbum(item.id)} className="px-3 py-2 bg-emerald-500 text-white rounded-xl">Abrir álbum</button>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -402,7 +440,8 @@ export default function Musica() {
                         />
                       </div>
                     </div>
-                    <div className="flex items-center justify-center gap-4 mb-6">
+                    <div className="flex flex-col items-center justify-center gap-4 mb-6">
+                    <div className="flex items-center justify-center gap-4">
                       <button
                         onClick={toggleShuffle}
                         className={`p-3 rounded-full transition-all ${shuffleState ? 'bg-emerald-500/20 text-emerald-300' : 'text-textSecondary hover:text-textPrimary'}`}
@@ -436,6 +475,11 @@ export default function Musica() {
                         <Repeat size={24} />
                       </button>
                     </div>
+                    <div className="flex items-center gap-4 text-xs text-textSecondary">
+                      <span>Shuffle: {shuffleState ? 'ON' : 'OFF'}</span>
+                      <span>Repetição: {repeatState === 'off' ? 'Desligado' : repeatState === 'context' ? 'Álbum/Contexto' : 'Faixa'}</span>
+                    </div>
+                  </div>
 
                     <div className="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">
                       <div className="flex items-center justify-between gap-4 mb-3">
