@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   spotifyApi: (options) => ipcRenderer.invoke('spotify-api', options),
   spotifyGetLastLog: () => ipcRenderer.invoke('spotify-get-last-log'),
   onSpotifyAuthSuccess: (callback) => ipcRenderer.on('spotify-auth-success', callback),
+  onSpotifyAuthLost: (callback) => ipcRenderer.on('spotify-auth-lost', (_event, ...args) => callback(...args)),
   getInstalledApps: () => ipcRenderer.invoke('get-installed-apps'),
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   selectFile: () => ipcRenderer.invoke('select-file'),

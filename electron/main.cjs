@@ -582,6 +582,7 @@ async function exchangeCodeForToken(code) {
     store.set('spotify.accessToken', data.access_token);
     store.set('spotify.refreshToken', data.refresh_token);
     store.set('spotify.expiresAt', Date.now() + (data.expires_in * 1000));
+    if (data.scope) store.set('spotify.scopes', data.scope);
   }
 
   return data;
@@ -606,12 +607,23 @@ async function refreshSpotifyToken() {
 
   const data = await response.json();
 
+  // Refresh token revogado ou expirado (ex.: usuário trocou a senha, ou o token foi emitido
+  // antes das permissões expandidas serem adicionadas). Limpa a sessão para forçar novo login.
+  if (data.error === 'invalid_grant' || !response.ok) {
+    console.error('Falha ao renovar token do Spotify:', data.error || response.status, data.error_description || '');
+    store.delete('spotify.accessToken');
+    store.delete('spotify.refreshToken');
+    store.delete('spotify.expiresAt');
+    return null;
+  }
+
   if (data.access_token) {
     store.set('spotify.accessToken', data.access_token);
     store.set('spotify.expiresAt', Date.now() + (data.expires_in * 1000));
     if (data.refresh_token) {
       store.set('spotify.refreshToken', data.refresh_token);
     }
+    if (data.scope) store.set('spotify.scopes', data.scope);
   }
 
   return data;
@@ -785,6 +797,7 @@ ipcMain.handle('spotify-get-tokens', () => {
     accessToken: store.get('spotify.accessToken'),
     refreshToken: store.get('spotify.refreshToken'),
     expiresAt: store.get('spotify.expiresAt'),
+    scopes: store.get('spotify.scopes'),
   };
 });
 
@@ -805,6 +818,11 @@ ipcMain.handle('spotify-api', async (_event, { endpoint, method = 'GET', body })
   if (expiresAt && Date.now() > (expiresAt - 60000)) {
     await refreshSpotifyToken();
     accessToken = store.get('spotify.accessToken');
+    if (!accessToken) {
+      // Refresh falhou (token revogado/expirado): sessão limpa, exige novo login
+      if (mainWindow) mainWindow.webContents.send('spotify-auth-lost');
+      return null;
+    }
   }
 
   const url = `https://api.spotify.com/v1${endpoint}`;

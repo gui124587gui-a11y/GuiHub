@@ -24,6 +24,7 @@ export default function Musica() {
   const [albumSaved, setAlbumSaved] = useState(false);
   const [albumLoading, setAlbumLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [scopeWarning, setScopeWarning] = useState<string | null>(null);
   // Playlists
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -42,10 +43,56 @@ export default function Musica() {
   const [artistTopTracks, setArtistTopTracks] = useState<any[]>([]);
   const lastTrackIdRef = useRef<string | null>(null);
 
+  const getLastSpotifyError = async (): Promise<any> => {
+    try {
+      return await (window as any).electronAPI.spotifyGetLastLog();
+    } catch {
+      return null;
+    }
+  };
+
+  const describeSpotifyError = (last: any, actionLabel: string): string => {
+    const generic = `Não foi possível ${actionLabel}.`;
+    if (!last) return `${generic} Verifique sua conexão (veja console).`;
+    const body = typeof last.body === 'string' ? last.body : '';
+    if (last.status === 403) {
+      return `${generic} Acesso negado pelo Spotify. Refaça a conexão (Desconectar → Conectar) para conceder as permissões necessárias.`;
+    }
+    if (last.status === 401) {
+      return `${generic} Sessão do Spotify expirada. Desconecte e conecte novamente.`;
+    }
+    if (last.status === 400 && /device/i.test(body)) {
+      return `Nenhum dispositivo ativo no Spotify. Abra o Spotify e toque uma música, ou selecione um dispositivo para ${actionLabel}.`;
+    }
+    return `${generic} Erro ${last.status}${last.statusText ? ` ${last.statusText}` : ''}${body ? `: ${body.slice(0, 140)}` : ''}`;
+  };
+
+  // Tenta reproduzir e, se não houver dispositivo ativo, transfere para o primeiro disponível e tenta de novo
+  const tryPlayWithFallback = async (body?: any): Promise<any> => {
+    let res = await spotifyService.play(body);
+    if (res === null && devices.length > 0) {
+      const active = devices.find((d) => d.is_active) || devices[0];
+      if (active?.id) {
+        await spotifyService.transferPlayback(active.id).catch(() => {});
+        await new Promise((r) => setTimeout(r, 400));
+        res = await spotifyService.play(body);
+      }
+    }
+    return res;
+  };
+
+  // Contagem de faixas de uma playlist: prefere as faixas já carregadas quando o total da API vier zerado/ausente
+  const getPlaylistTrackCount = (pl: any) => {
+    const loaded = playlistsTracksMap[pl.id]?.length;
+    if (loaded && loaded > 0) return loaded;
+    return pl.tracks?.total || 0;
+  };
+
   const openAddMenu = (uri: string, name?: string) => {
     setAddMenuTrackUri(uri);
     setAddMenuTrackName(name || null);
     setModalSearch('');
+    setPlaylistActionMsg(null);
   };
 
   const closeAddMenu = () => {
@@ -69,6 +116,13 @@ export default function Musica() {
       (window as any).electronAPI.onSpotifyAuthSuccess(() => {
         checkConnection();
       });
+      // Sessão expirada/revogada no meio da execução: desloga e avisa o usuário
+      (window as any).electronAPI.onSpotifyAuthLost(() => {
+        setIsConnected(false);
+        setCurrentTrack(null);
+        lastTrackIdRef.current = null;
+        setStatusMessage('Sessão do Spotify expirada. Conecte novamente para continuar.');
+      });
     }
 
     const interval = setInterval(() => {
@@ -85,6 +139,14 @@ export default function Musica() {
       const tokens = await (window as any).electronAPI.spotifyGetTokens();
       if (tokens.accessToken) {
         setIsConnected(true);
+        // Conexões feitas antes da v1.0.23 não têm permissão de editar playlists — avisa para reconectar
+        const scopes = tokens.scopes ? String(tokens.scopes).split(/\s+/) : [];
+        const missingPlaylistScope = scopes.length > 0
+          ? !['playlist-modify-public', 'playlist-modify-private'].some((s) => scopes.includes(s))
+          : false;
+        setScopeWarning(missingPlaylistScope
+          ? 'Sua conexão não tem permissão de editar playlists (conexão antiga). Desconecte e conecte novamente para conceder as permissões atuais do Spotify.'
+          : null);
         await Promise.all([fetchCurrentPlayback(), loadDevices(), loadTopStats(), loadPlaylists()]);
       }
     }
@@ -184,9 +246,9 @@ export default function Musica() {
       const body = { name: newPlaylistName, public: false, description: 'Criada pelo GuiHub' };
       const res = await spotifyService.createPlaylist(me.id, body);
       if (!res) {
-        const last = await (window as any).electronAPI.spotifyGetLastLog().catch(() => null);
+        const last = await getLastSpotifyError();
         console.error('createPlaylist failed, last log:', last);
-        setPlaylistActionMsg('Não foi possível criar a playlist. Verifique as permissões (veja console).');
+        setPlaylistActionMsg(describeSpotifyError(last, 'criar a playlist'));
         return;
       }
       setNewPlaylistName('');
@@ -205,23 +267,25 @@ export default function Musica() {
     }
   };
 
-  const addTrackToPlaylist = async (playlistId: string, uri: string) => {
+  const addTrackToPlaylist = async (playlistId: string, uri: string): Promise<boolean> => {
     try {
       const res = await spotifyService.addPlaylistTracks(playlistId, [uri]);
       if (res === null) {
-        const last = await (window as any).electronAPI.spotifyGetLastLog().catch(() => null);
+        const last = await getLastSpotifyError();
         console.error('addTrackToPlaylist failed, last log:', last);
-        setPlaylistActionMsg('Não foi possível adicionar a faixa. Verifique as permissões (veja console).');
-        return;
+        setPlaylistActionMsg(describeSpotifyError(last, 'adicionar a faixa'));
+        return false;
       }
       setPlaylistActionMsg('Faixa adicionada à playlist.');
       // refresh playlist view if it's open
       if (viewingPlaylist?.id === playlistId) await loadPlaylistTracks(playlistId);
       // refresh map for expanded playlist
       if (expandedPlaylists[playlistId]) await loadPlaylistTracks(playlistId);
+      return true;
     } catch (err) {
       console.error('Erro ao adicionar faixa à playlist:', err);
       setPlaylistActionMsg('Não foi possível adicionar a faixa.');
+      return false;
     }
   };
 
@@ -231,9 +295,13 @@ export default function Musica() {
       const items = res?.items || res || [];
       setPlaylistTracks(items);
       setPlaylistsTracksMap(prev => ({ ...prev, [playlistId]: items }));
+      // Se a playlist está aberta e a API retornou total zerado/ausente, atualiza o total com o que foi carregado
+      if (viewingPlaylist?.id === playlistId && items.length > 0 && items.length < 100 && !viewingPlaylist.tracks?.total) {
+        setViewingPlaylist(prev => prev ? { ...prev, tracks: { ...(prev.tracks || {}), total: items.length } } : prev);
+      }
     } catch (err) {
       console.error('Erro ao carregar faixas da playlist:', err);
-      setPlaylistActionMsg('Não foi possível carregar faixas da playlist.');
+      setPlaylistActionMsg('Não foi possível carregar as faixas da playlist.');
     }
   };
 
@@ -254,11 +322,11 @@ export default function Musica() {
 
   const playPlaylist = async (playlistId: string) => {
     try {
-      const res = await spotifyService.play({ context_uri: `spotify:playlist:${playlistId}` });
+      const res = await tryPlayWithFallback({ context_uri: `spotify:playlist:${playlistId}` });
       if (res === null) {
-        const last = await (window as any).electronAPI.spotifyGetLastLog().catch(() => null);
+        const last = await getLastSpotifyError();
         console.error('playPlaylist failed, last log:', last);
-        setStatusMessage('Não foi possível iniciar a reprodução da playlist. Verifique as permissões.');
+        setStatusMessage(describeSpotifyError(last, 'reproduzir a playlist'));
         return;
       }
       setStatusMessage('Reproduzindo playlist.');
@@ -272,11 +340,11 @@ export default function Musica() {
   const playTrackInPlaylist = async (playlistId: string, trackUri: string) => {
     try {
       const body = { context_uri: `spotify:playlist:${playlistId}`, offset: { uri: trackUri } };
-      const res = await spotifyService.play(body);
+      const res = await tryPlayWithFallback(body);
       if (res === null) {
-        const last = await (window as any).electronAPI.spotifyGetLastLog().catch(() => null);
+        const last = await getLastSpotifyError();
         console.error('playTrackInPlaylist failed, last log:', last);
-        setStatusMessage('Não foi possível reproduzir a faixa na playlist.');
+        setStatusMessage(describeSpotifyError(last, 'reproduzir a faixa'));
         return;
       }
       setStatusMessage('Reproduzindo seleção da playlist.');
@@ -289,11 +357,18 @@ export default function Musica() {
 
   const enqueueTrack = async (trackUri: string) => {
     try {
-      const res = await spotifyService.addToQueue(trackUri);
+      let res = await spotifyService.addToQueue(trackUri);
       if (res === null) {
-        const last = await (window as any).electronAPI.spotifyGetLastLog().catch(() => null);
+        // Fallback: tenta enfileirar apontando para o dispositivo ativo (ou o primeiro disponível)
+        const target = devices.find((d) => d.is_active) || devices[0];
+        if (target?.id) {
+          res = await spotifyService.addToQueue(trackUri, target.id);
+        }
+      }
+      if (res === null) {
+        const last = await getLastSpotifyError();
         console.error('enqueueTrack failed, last log:', last);
-        setStatusMessage('Não foi possível enfileirar a faixa.');
+        setStatusMessage(describeSpotifyError(last, 'enfileirar a faixa'));
         return;
       }
       setStatusMessage('Faixa adicionada à fila.');
@@ -400,7 +475,13 @@ export default function Musica() {
 
   const playTrackByUri = async (uri: string) => {
     try {
-      await spotifyService.play({ uris: [uri] });
+      const res = await tryPlayWithFallback({ uris: [uri] });
+      if (res === null) {
+        const last = await getLastSpotifyError();
+        console.error('playTrackByUri failed, last log:', last);
+        setStatusMessage(describeSpotifyError(last, 'reproduzir a faixa'));
+        return;
+      }
       setTimeout(fetchCurrentPlayback, 700);
     } catch (err) {
       console.error('Erro ao reproduzir faixa:', err);
@@ -499,6 +580,7 @@ export default function Musica() {
       setRecommendations([]);
       setAlbumDetails(null);
       setAlbumSaved(false);
+      setScopeWarning(null);
       setStatusMessage('Desconectado do Spotify.');
     }
   };
@@ -567,6 +649,25 @@ export default function Musica() {
         {statusMessage && (
           <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
             {statusMessage}
+          </div>
+        )}
+
+        {scopeWarning && (
+          <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300 flex items-center justify-between gap-3">
+            <span>{scopeWarning}</span>
+            <button
+              onClick={async () => {
+                await (window as any).electronAPI?.spotifyLogout();
+                setIsConnected(false);
+                setCurrentTrack(null);
+                lastTrackIdRef.current = null;
+                setScopeWarning(null);
+                setStatusMessage('Conecte novamente para autorizar as permissões de playlist.');
+              }}
+              className="shrink-0 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-200 transition-colors"
+            >
+              Reconectar
+            </button>
           </div>
         )}
 
@@ -872,8 +973,14 @@ export default function Musica() {
                   <div key={pl.id} className="rounded-2xl bg-cardHover px-3 py-2">
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-textPrimary">{pl.name}</div>
-                        <div className="truncate text-xs text-textSecondary">{pl.tracks?.total || (playlistsTracksMap[pl.id]?.length ?? 0)} faixas • por {pl.owner?.display_name}</div>
+                        <button
+                          onClick={() => openPlaylist(pl)}
+                          title={`Abrir ${pl.name}`}
+                          className="truncate w-full text-left font-medium text-textPrimary hover:text-emerald-400 transition-colors"
+                        >
+                          {pl.name}
+                        </button>
+                        <div className="truncate text-xs text-textSecondary">{getPlaylistTrackCount(pl)} faixas • por {pl.owner?.display_name}</div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => playPlaylist(pl.id)} className="px-3 py-2 bg-green-500 text-white rounded-xl">Tocar playlist</button>
@@ -976,7 +1083,7 @@ export default function Musica() {
                     <ListMusic size={18} className="text-emerald-400" />
                     Playlist: {viewingPlaylist.name}
                   </div>
-                  <div className="text-sm text-textSecondary">{viewingPlaylist.tracks?.total || 0} faixas</div>
+                  <div className="text-sm text-textSecondary">{playlistTracks.length > 0 ? playlistTracks.length : (viewingPlaylist.tracks?.total || 0)} faixas</div>
                 </div>
                 <div className="space-y-2">
                   {playlistTracks.length > 0 ? playlistTracks.map((p:any, idx:number) => (
@@ -1058,6 +1165,12 @@ export default function Musica() {
                   <button onClick={closeAddMenu} className="text-textSecondary hover:text-textPrimary transition-colors" title="Fechar (Esc)">✕</button>
                 </div>
 
+                {playlistActionMsg && (
+                  <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                    {playlistActionMsg}
+                  </div>
+                )}
+
                 <div className="mb-3">
                   <input
                     value={modalSearch}
@@ -1103,8 +1216,8 @@ export default function Musica() {
                           onClick={async () => {
                             try {
                               setModalAdding(true);
-                              await addTrackToPlaylist(pl.id, addMenuTrackUri);
-                              closeAddMenu();
+                              const ok = await addTrackToPlaylist(pl.id, addMenuTrackUri);
+                              if (ok) closeAddMenu();
                             } catch (e) {
                               console.error('Erro ao adicionar faixa no modal:', e);
                             } finally {
