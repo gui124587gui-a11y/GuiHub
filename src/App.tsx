@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import Home from '@/pages/Home';
 import Workspaces from '@/pages/Workspaces';
 import Atalhos from '@/pages/Atalhos';
 import Biblioteca from '@/pages/Biblioteca';
-import Processos from '@/pages/Processos';
-import Onboarding from '@/components/Onboarding';
 import Favoritos from '@/pages/Favoritos';
 import Pesquisa from '@/pages/Pesquisa';
 import Backup from '@/pages/Backup';
@@ -26,19 +24,9 @@ import useAgendaAlarms from '@/hooks/useAgendaAlarms';
 
 export default function App() {
   const { activePage } = useAppStore();
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // register agenda alarms globally
   useAgendaAlarms();
-
-  useEffect(() => {
-    setShowOnboarding(localStorage.getItem('guihub-onboarding-complete') !== 'true');
-  }, []);
-
-  const finishOnboarding = () => {
-    localStorage.setItem('guihub-onboarding-complete', 'true');
-    setShowOnboarding(false);
-  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -53,7 +41,6 @@ export default function App() {
           {activePage === 'favoritos' && <Favoritos />}
           {activePage === 'pesquisa' && <Pesquisa />}
           {activePage === 'backup' && <Backup />}
-          {activePage === 'processos' && <Processos />}
           {activePage === 'chatbot' && <Chatbot />}
           {activePage === 'notas' && <Notas />}
           {activePage === 'agenda' && <Agenda />}
@@ -67,7 +54,6 @@ export default function App() {
           {activePage === 'uninstaller' && <UninstallerMagic />}
         </main>
       </div>
-      {showOnboarding && <Onboarding onFinish={finishOnboarding} />}
     </div>
   );
 }

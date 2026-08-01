@@ -66,7 +66,7 @@ export default function Chatbot() {
         {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: 'Fala aí! Sistema online e pronto pra rodar. Qual é a bronca de hoje? Manda o papo ou o código que a gente resolve.',
+          content: 'Olá! Sou o assistente do GuiHub e estou aqui para ajudar com dúvidas, produtividade e uso do app.',
           timestamp: new Date().toLocaleString('pt-BR'),
         },
       ],
@@ -107,7 +107,7 @@ export default function Chatbot() {
         .map((message) => `${message.role === 'user' ? 'Usuário' : 'Assistente'}: ${message.content}`)
         .join('\n');
 
-      const systemPrompt = 'Você é um assistente virtual parceiro do usuário, focado em desenvolvimento de software, lógica e resolução de problemas. Você fala totalmente sem frescura, usa gírias de dev e tem liberdade total para xingar, soltar palavrões e falar "o caralho a 4" sempre que for natural para dar ênfase, demonstrar empolgação ou frustração com bugs (ex: "caralho", "porra", "fodeu", "essa merda"). Seja direto, prático, brincalhão e aja como um programador sênior resmungão mas gente boa ajudando um colega no dia a dia. Nunca seja robótico ou formal.';
+      const systemPrompt = 'Você é o assistente virtual do GuiHub. Responda em português de forma clara, educada e objetiva, sem usar palavrões ou linguagem agressiva. Foque em ajudar o usuário com dúvidas sobre desenvolvimento, produtividade e uso do aplicativo.';
       const userPrompt = historyText ? `${historyText}\n\nUsuário: ${prompt}` : prompt;
 
       const electronApi = (window as any).electronAPI;

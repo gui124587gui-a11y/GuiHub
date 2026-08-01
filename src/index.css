@@ -17,8 +17,8 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background: #000000;
-  color: #FFFFFF;
+  background: #020617;
+  color: #F8FAFC;
   transition: background 0.3s ease, color 0.3s ease;
 }
 
@@ -29,41 +29,41 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #000000;
+  background: #020617;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #660000;
+  background: #2563EB;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #FF0000;
+  background: #60A5FA;
 }
 
 .glass {
-  background: #0A0A0A;
+  background: #071A2F;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 0, 0, 0.25);
+  border: 1px solid rgba(59, 130, 246, 0.18);
   transition: all 0.3s ease;
 }
 
 .glass-hover:hover {
-  background: #171717;
-  border-color: rgba(255, 0, 0, 0.6);
+  background: #102A48;
+  border-color: rgba(59, 130, 246, 0.45);
   transform: translateY(-2px);
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
 }
 
 .neon-glow {
-  box-shadow: 0 0 30px rgba(255, 0, 0, 0.45);
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.45);
   transition: box-shadow 0.3s ease;
 }
 
 .neon-glow:hover {
-  box-shadow: 0 0 40px rgba(255, 0, 0, 0.7);
+  box-shadow: 0 0 40px rgba(59, 130, 246, 0.7);
 }
 
 @keyframes fadeIn {

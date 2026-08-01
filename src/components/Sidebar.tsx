@@ -32,7 +32,6 @@ const navItems = [
   { id: 'favoritos', icon: Star, label: 'Favoritos' },
   { id: 'pesquisa', icon: Search, label: 'Pesquisa' },
   { id: 'backup', icon: HardDrive, label: 'Backup' },
-  { id: 'processos', icon: ListFilter, label: 'Processos pesados' },
   { id: 'chatbot', icon: Bot, label: 'Chatbot AI' },
   { id: 'notas', icon: FileText, label: 'Notas' },
   { id: 'agenda', icon: Calendar, label: 'Agenda' },
