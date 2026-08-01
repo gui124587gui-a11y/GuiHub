@@ -1,13 +1,13 @@
 {
-  "name": "anthonyhub",
-  "productName": "AnthonyHub",
-  "version": "1.0.13",
+  "name": "guihub",
+  "productName": "GuiHub",
+  "version": "1.0.15",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gui124587gui-a11y/AnthonyHub.git"
+    "url": "https://github.com/gui124587gui-a11y/GuiHub.git"
   },
   "scripts": {
     "dev": "vite",
@@ -65,10 +65,10 @@
     "zx": "^8.8.5"
   },
   "build": {
-    "appId": "com.gui124587gui-a11y.anthonyhub",
-    "productName": "AnthonyHub",
+    "appId": "com.gui124587gui-a11y.guihub",
+    "productName": "GuiHub",
     "directories": {
-      "output": "C:/anthonyhub-release"
+      "output": "C:/guihub-release"
     },
     "icon": "build/icon.ico",
     "win": {
@@ -77,13 +77,13 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "AnthonyHub.Setup.${version}.exe"
+      "artifactName": "GuiHub.Setup.${version}.exe"
     },
     "publish": [
       {
         "provider": "github",
         "owner": "gui124587gui-a11y",
-        "repo": "AnthonyHub",
+        "repo": "GuiHub",
         "vPrefixedTagName": true,
         "releaseType": "release"
       }
