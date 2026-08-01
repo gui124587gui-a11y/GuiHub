@@ -411,8 +411,9 @@ function createWindow() {
     mainWindow?.show();
     mainWindow?.focus();
     try {
-      // Abrir DevTools automaticamente para diagnóstico
-      mainWindow.webContents.openDevTools({ mode: 'right' });
+      // DevTools não serão abertos automaticamente em produção/dev.
+      // Se precisar abrir manualmente, descomente a linha abaixo.
+      // mainWindow.webContents.openDevTools({ mode: 'right' });
     } catch (e) {
       console.warn('Não foi possível abrir DevTools automaticamente:', e);
     }
