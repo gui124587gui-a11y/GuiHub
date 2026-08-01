@@ -120,7 +120,7 @@ if (!ghCmd && !process.env.GH_TOKEN) {
     } else {
         try {
             try { run(`${ghCmd} release delete v${version} -y`); } catch (e) { console.log('Nota: Nenhuma release anterior para deletar.'); }
-            run(`${ghCmd} release create v${version} "${setupFile}" "C:/guihub-release/latest.yml" --title "Versão ${version}" --notes "Automático"`);
+            run(`${ghCmd} release create v${version} "${setupFile}" "C:/guihub-release/latest.yml" --title "Versão ${version}" --notes "Automático" --verify-tag`);
             console.log('✅ Tudo feito. Release publicada com sucesso!');
         } catch (err) {
             console.error('Erro ao publicar com GitHub CLI:', err);

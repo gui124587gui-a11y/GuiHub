@@ -32,11 +32,11 @@ export default function App() {
   useAgendaAlarms();
 
   useEffect(() => {
-    setShowOnboarding(localStorage.getItem('anthonyhub-onboarding-complete') !== 'true');
+    setShowOnboarding(localStorage.getItem('guihub-onboarding-complete') !== 'true');
   }, []);
 
   const finishOnboarding = () => {
-    localStorage.setItem('anthonyhub-onboarding-complete', 'true');
+    localStorage.setItem('guihub-onboarding-complete', 'true');
     setShowOnboarding(false);
   };
 

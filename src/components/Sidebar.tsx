@@ -62,7 +62,7 @@ export default function Sidebar() {
           {!sidebarCollapsed && (
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                AnthonyHub
+                GuiHub
               </h1>
             </div>
           )}
@@ -103,7 +103,7 @@ export default function Sidebar() {
           </div>
           {!sidebarCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-textPrimary">Anthony</p>
+              <p className="text-sm font-semibold text-textPrimary">GuiHub</p>
               <p className="text-xs text-textSecondary">Bem-vindo de volta!</p>
             </div>
           )}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowRight, Check, ListFilter, Search, Zap } from 'lucide-react';
 
 const steps = [
-  { icon: Zap, title: 'Bem-vindo ao AnthonyHub', text: 'Seu espaço rápido para organizar tarefas, atalhos e ferramentas do dia a dia.' },
+  { icon: Zap, title: 'Bem-vindo ao GuiHub', text: 'Seu espaço rápido para organizar tarefas, atalhos e ferramentas do dia a dia.' },
   { icon: ListFilter, title: 'Veja o que pesa no PC', text: 'Abra “Processos pesados” para descobrir quais programas estão consumindo mais CPU e memória.' },
   { icon: Search, title: 'Encontre tudo rapidamente', text: 'Use a busca no topo para navegar pelas funções do hub sem perder tempo.' },
 ];
