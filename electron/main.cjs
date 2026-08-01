@@ -275,6 +275,20 @@ const startInstallation = async (softwareName, sendStatus) => {
 let mainWindow = null;
 let authWindow = null;
 let tray = null;
+let hardwareMonitor = null;
+
+function startHardwareMonitoring() {
+  try {
+    hardwareMonitor = require(path.join(__dirname, 'hardwareMonitor.cjs'));
+    if (hardwareMonitor && typeof hardwareMonitor.startHardwareMonitor === 'function') {
+      console.log('Iniciando monitor de hardware...');
+      hardwareMonitor.startHardwareMonitor(mainWindow);
+    }
+  } catch (err) {
+    console.error('Erro ao iniciar monitor de hardware:', err);
+  }
+}
+
 // Create tray icon
 function createTray() {
   // Prefer the packaged ICO icon on Windows for tray visibility
@@ -414,6 +428,7 @@ function createWindow() {
     mainWindow = null;
   });
 
+  startHardwareMonitoring();
 }
 
 function setupAutoUpdater() {
@@ -1222,16 +1237,7 @@ ipcMain.handle('system-uptime', async () => {
 ipcMain.handle('process-list', async () => {
   try {
     const processes = await si.processes();
-    return (processes.list || [])
-      .map((process) => ({
-        pid: process.pid,
-        name: process.name || 'Processo sem nome',
-        cpu: Number(process.cpu) || 0,
-        mem: Number(process.mem) || 0,
-        memoryMb: (Number(process.memRss) || 0) / 1024,
-      }))
-      .sort((a, b) => (b.cpu + b.mem) - (a.cpu + a.mem))
-      .slice(0, 100);
+    return processes.list || [];
   } catch (err) {
     console.error('Erro ao obter lista de processos:', err);
     return [];
