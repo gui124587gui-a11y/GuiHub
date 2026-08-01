@@ -338,7 +338,7 @@ function createTray() {
 }
 
 // Spotify config
-const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || 'c7162dab98194a30a7ea9ba933b36e5';
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || 'a39a856b978d417bbcb92a25964cb8dd';
 const SPOTIFY_REDIRECT_URI = 'guihub://spotify-callback';
 const SPOTIFY_SCOPES = [
   'user-read-private',

@@ -1,3 +1,10 @@
+# GuiHub v1.0.29
+
+## Música (Spotify) — novo app/client
+- **Novo aplicativo Spotify registrado:** o GuiHub agora usa um novo Client ID no fluxo de autorização (antes, a versão instalada usava o Client ID antigo embutido no código).
+- **Corrigido o Client ID usado na versão instalada:** o Client ID agora é atualizado diretamente no código (o `.env` não é empacotado no instalador), garantindo que o app instalado use o mesmo app Spotify do ambiente de desenvolvimento.
+- **Diagnóstico "Verificar Spotify":** mantido e útil para conferir escopos e o carregamento de faixas de playlist após reconectar.
+
 # GuiHub v1.0.28
 
 ## Música (Spotify)
