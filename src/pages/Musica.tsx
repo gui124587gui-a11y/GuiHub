@@ -23,6 +23,15 @@ export default function Musica() {
   const [albumSaved, setAlbumSaved] = useState(false);
   const [albumLoading, setAlbumLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  // Playlists
+  const [playlists, setPlaylists] = useState<any[]>([]);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [playlistActionMsg, setPlaylistActionMsg] = useState<string | null>(null);
+  const [playlistTracks, setPlaylistTracks] = useState<any[]>([]);
+  const [viewingPlaylist, setViewingPlaylist] = useState<any | null>(null);
+  const [selectedPlaylistForAdd, setSelectedPlaylistForAdd] = useState<string | null>(null);
+  const [viewingArtist, setViewingArtist] = useState<any | null>(null);
+  const [artistTopTracks, setArtistTopTracks] = useState<any[]>([]);
 
   useEffect(() => {
     checkConnection();
@@ -47,7 +56,7 @@ export default function Musica() {
       const tokens = await (window as any).electronAPI.spotifyGetTokens();
       if (tokens.accessToken) {
         setIsConnected(true);
-        await Promise.all([fetchCurrentPlayback(), loadDevices(), loadTopStats()]);
+        await Promise.all([fetchCurrentPlayback(), loadDevices(), loadTopStats(), loadPlaylists()]);
       }
     }
   };
@@ -123,6 +132,76 @@ export default function Musica() {
     } catch (err) {
       console.error('Erro ao buscar estatísticas:', err);
       setStatusMessage('Não foi possível carregar as estatísticas do Spotify.');
+    }
+  };
+
+  const loadPlaylists = async () => {
+    try {
+      const electronApi = (window as any).electronAPI;
+      const res = await electronApi.spotifyApi({ endpoint: '/me/playlists?limit=50' });
+      setPlaylists(res?.items || []);
+    } catch (err) {
+      console.error('Erro ao carregar playlists:', err);
+      setPlaylistActionMsg('Não foi possível carregar suas playlists.');
+    }
+  };
+
+  const createPlaylist = async () => {
+    if (!newPlaylistName.trim()) return setPlaylistActionMsg('Nome da playlist não pode ser vazio.');
+    try {
+      const electronApi = (window as any).electronAPI;
+      const me = await electronApi.spotifyApi({ endpoint: '/me' });
+      await electronApi.spotifyApi({ endpoint: `/users/${me.id}/playlists`, method: 'POST', body: { name: newPlaylistName } });
+      setNewPlaylistName('');
+      setPlaylistActionMsg('Playlist criada.');
+      await loadPlaylists();
+    } catch (err) {
+      console.error('Erro ao criar playlist:', err);
+      setPlaylistActionMsg('Não foi possível criar a playlist.');
+    }
+  };
+
+  const addTrackToPlaylist = async (playlistId: string, uri: string) => {
+    try {
+      const electronApi = (window as any).electronAPI;
+      await electronApi.spotifyApi({ endpoint: `/playlists/${playlistId}/tracks`, method: 'POST', body: { uris: [uri] } });
+      setPlaylistActionMsg('Faixa adicionada à playlist.');
+      // refresh playlist view if it's open
+      if (viewingPlaylist?.id === playlistId) await loadPlaylistTracks(playlistId);
+    } catch (err) {
+      console.error('Erro ao adicionar faixa à playlist:', err);
+      setPlaylistActionMsg('Não foi possível adicionar a faixa.');
+    }
+  };
+
+  const loadPlaylistTracks = async (playlistId: string) => {
+    try {
+      const electronApi = (window as any).electronAPI;
+      const res = await electronApi.spotifyApi({ endpoint: `/playlists/${playlistId}/tracks?limit=100` });
+      setPlaylistTracks(res?.items || []);
+    } catch (err) {
+      console.error('Erro ao carregar faixas da playlist:', err);
+      setPlaylistActionMsg('Não foi possível carregar faixas da playlist.');
+    }
+  };
+
+  const openPlaylist = async (pl: any) => {
+    setViewingPlaylist(pl);
+    await loadPlaylistTracks(pl.id);
+  };
+
+  const viewArtist = async (artistId: string) => {
+    try {
+      const electronApi = (window as any).electronAPI;
+      const [artistResp, topResp] = await Promise.all([
+        electronApi.spotifyApi({ endpoint: `/artists/${artistId}` }),
+        electronApi.spotifyApi({ endpoint: `/artists/${artistId}/top-tracks?market=from_token` }),
+      ]);
+      setViewingArtist(artistResp);
+      setArtistTopTracks(topResp?.tracks || []);
+    } catch (err) {
+      console.error('Erro ao carregar artista:', err);
+      setStatusMessage('Não foi possível carregar o artista.');
     }
   };
 
@@ -398,9 +477,24 @@ export default function Musica() {
                           </div>
                         </div>
                         {searchType === 'track' ? (
-                          <button onClick={() => playTrackByUri(item.uri)} className="px-3 py-2 bg-green-500 text-white rounded-xl">Play</button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => playTrackByUri(item.uri)} className="px-3 py-2 bg-green-500 text-white rounded-xl">Play</button>
+                            <select value={selectedPlaylistForAdd === null ? '' : selectedPlaylistForAdd} onChange={(e) => setSelectedPlaylistForAdd(e.target.value)} className="bg-cardHover text-sm rounded px-2 py-1">
+                              <option value="">Adicionar à...</option>
+                              {playlists.map((pl:any) => <option key={pl.id} value={pl.id}>{pl.name}</option>)}
+                            </select>
+                            <button onClick={() => { if (selectedPlaylistForAdd) addTrackToPlaylist(selectedPlaylistForAdd, item.uri); }} className="px-3 py-2 bg-emerald-500 text-white rounded-xl">Adicionar</button>
+                          </div>
                         ) : searchType === 'album' ? (
                           <button onClick={() => viewAlbum(item.id)} className="px-3 py-2 bg-emerald-500 text-white rounded-xl">Abrir álbum</button>
+                        ) : searchType === 'artist' ? (
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => viewArtist(item.id)} className="px-3 py-2 bg-emerald-500 text-white rounded-xl">Abrir artista</button>
+                          </div>
+                        ) : searchType === 'playlist' ? (
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => openPlaylist(item)} className="px-3 py-2 bg-emerald-500 text-white rounded-xl">Abrir playlist</button>
+                          </div>
                         ) : null}
                       </div>
                     ))}
@@ -574,6 +668,50 @@ export default function Musica() {
               </div>
             </div>
 
+            {/* Playlists section */}
+            <div className="glass rounded-3xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-lg font-semibold text-textPrimary">
+                  <ListMusic size={18} className="text-emerald-400" />
+                  Playlists
+                </div>
+                <div className="text-sm text-textSecondary">Gerencie suas playlists</div>
+              </div>
+
+              <div className="mb-4 flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nome da nova playlist"
+                  value={newPlaylistName}
+                  onChange={(e) => setNewPlaylistName(e.target.value)}
+                  className="flex-1 pl-4 pr-3 py-2 rounded-2xl glass text-textPrimary placeholder-textSecondary"
+                />
+                <button onClick={createPlaylist} className="px-4 py-2 rounded-2xl bg-emerald-500 text-white">Criar</button>
+              </div>
+
+              {playlistActionMsg && <div className="mb-3 text-sm text-textSecondary">{playlistActionMsg}</div>}
+
+              <div className="space-y-2">
+                {playlists.length > 0 ? playlists.map((pl:any) => (
+                  <div key={pl.id} className="flex items-center justify-between rounded-2xl bg-cardHover px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-textPrimary">{pl.name}</div>
+                      <div className="truncate text-xs text-textSecondary">{pl.tracks?.total || 0} faixas • por {pl.owner?.display_name}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {currentTrack ? (
+                        <button onClick={() => addTrackToPlaylist(pl.id, currentTrack.uri)} className="px-3 py-2 bg-emerald-500 text-white rounded-xl">Adicionar faixa atual</button>
+                      ) : (
+                        <button disabled className="px-3 py-2 bg-cardHover text-textSecondary rounded-xl">Sem faixa</button>
+                      )}
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-sm text-textSecondary">Você não possui playlists ou não foram carregadas.</p>
+                )}
+              </div>
+            </div>
+
             {recommendations.length > 0 && (
               <div className="glass rounded-3xl p-6">
                 <div className="flex items-center gap-2 text-lg font-semibold text-textPrimary mb-4">
@@ -592,6 +730,70 @@ export default function Musica() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Artist view */}
+            {viewingArtist && (
+              <div className="glass rounded-3xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-lg font-semibold text-textPrimary">
+                    <Disc3 size={18} className="text-emerald-400" />
+                    Artista: {viewingArtist.name}
+                  </div>
+                  <div className="text-sm text-textSecondary">Gêneros: {viewingArtist.genres?.slice(0,3).join(', ')}</div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <img src={viewingArtist.images?.[0]?.url} alt={viewingArtist.name} className="w-full max-w-[260px] rounded-lg" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm text-textSecondary mb-2">Top tracks</h4>
+                    <div className="space-y-2">
+                      {artistTopTracks.map((t) => (
+                        <div key={t.id} className="flex items-center justify-between rounded-2xl bg-cardHover px-3 py-2">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-textPrimary">{t.name}</div>
+                            <div className="truncate text-xs text-textSecondary">{getArtistsLabel(t.artists)}</div>
+                          </div>
+                          <div>
+                            <button onClick={() => playTrackByUri(t.uri)} className="px-3 py-2 bg-green-500 text-white rounded-xl mr-2">Play</button>
+                            <select onChange={(e) => addTrackToPlaylist(e.target.value, t.uri)} className="bg-cardHover text-sm rounded px-2 py-1">
+                              <option value="">Adicionar à...</option>
+                              {playlists.map((pl:any) => <option key={pl.id} value={pl.id}>{pl.name}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Playlist view */}
+            {viewingPlaylist && (
+              <div className="glass rounded-3xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-lg font-semibold text-textPrimary">
+                    <ListMusic size={18} className="text-emerald-400" />
+                    Playlist: {viewingPlaylist.name}
+                  </div>
+                  <div className="text-sm text-textSecondary">{viewingPlaylist.tracks?.total || 0} faixas</div>
+                </div>
+                <div className="space-y-2">
+                  {playlistTracks.length > 0 ? playlistTracks.map((p:any, idx:number) => (
+                    <div key={p.track?.id || idx} className="flex items-center justify-between rounded-2xl bg-cardHover px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-textPrimary">{p.track?.name}</div>
+                        <div className="truncate text-xs text-textSecondary">{getArtistsLabel(p.track?.artists)}</div>
+                      </div>
+                      <div>
+                        <button onClick={() => playTrackByUri(p.track.uri)} className="px-3 py-2 bg-green-500 text-white rounded-xl">Play</button>
+                      </div>
+                    </div>
+                  )) : <p className="text-sm text-textSecondary">Sem faixas nesta playlist.</p>}
                 </div>
               </div>
             )}
