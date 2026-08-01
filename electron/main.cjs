@@ -348,6 +348,27 @@ const SPOTIFY_SCOPES = [
   'user-read-currently-playing',
   'user-read-recently-played'
 ].join(' ');
+// Expanded scopes to cover playlists, library, top items and follows
+const SPOTIFY_REQUIRED_SCOPES = [
+  'user-read-private',
+  'user-read-email',
+  'user-read-playback-state',
+  'user-modify-playback-state',
+  'user-read-currently-playing',
+  'user-read-recently-played',
+  'user-top-read',
+  'playlist-read-private',
+  'playlist-read-collaborative',
+  'playlist-modify-public',
+  'playlist-modify-private',
+  'user-library-read',
+  'user-library-modify',
+  'user-follow-read',
+  'user-follow-modify'
+].join(' ');
+
+// use expanded scopes for auth
+const SPOTIFY_SCOPES_VALUE = SPOTIFY_REQUIRED_SCOPES;
 
 function generateRandomString(length) {
   let text = '';
@@ -389,6 +410,12 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
     mainWindow?.focus();
+    try {
+      // Abrir DevTools automaticamente para diagnóstico
+      mainWindow.webContents.openDevTools({ mode: 'right' });
+    } catch (e) {
+      console.warn('Não foi possível abrir DevTools automaticamente:', e);
+    }
   });
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
@@ -506,7 +533,7 @@ function createSpotifyAuthWindow() {
   const authUrl = new URL('https://accounts.spotify.com/authorize');
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('client_id', SPOTIFY_CLIENT_ID);
-  authUrl.searchParams.set('scope', SPOTIFY_SCOPES);
+  authUrl.searchParams.set('scope', SPOTIFY_SCOPES_VALUE || SPOTIFY_SCOPES);
   authUrl.searchParams.set('redirect_uri', SPOTIFY_REDIRECT_URI);
   authUrl.searchParams.set('state', state);
   authUrl.searchParams.set('code_challenge_method', 'S256');
@@ -768,6 +795,9 @@ ipcMain.handle('spotify-api', async (_event, { endpoint, method = 'GET', body })
   let accessToken = store.get('spotify.accessToken');
   const expiresAt = store.get('spotify.expiresAt');
 
+  // store last spotify API error/log for diagnostics
+  if (typeof global.lastSpotifyApiLog === 'undefined') global.lastSpotifyApiLog = null;
+
   if (!accessToken) return null;
 
   // Refresh token se estiver expirado em menos de 1 minuto
@@ -791,13 +821,30 @@ ipcMain.handle('spotify-api', async (_event, { endpoint, method = 'GET', body })
 
   try {
     const response = await fetch(url, options);
-    if (!response.ok) throw new Error(`Spotify API error: ${response.status}`);
+    if (!response.ok) {
+      let textBody = null;
+      try {
+        textBody = await response.text();
+      } catch (e) {
+        textBody = null;
+      }
+      const logObj = { ts: Date.now(), url, method: options.method, status: response.status, statusText: response.statusText, body: textBody };
+      console.error('Spotify API non-ok response', logObj);
+      global.lastSpotifyApiLog = logObj;
+      throw new Error(`Spotify API error: ${response.status} ${response.statusText} - ${textBody}`);
+    }
     if (response.status === 204) return { success: true };
     return await response.json();
   } catch (err) {
     console.error('Spotify API error:', err);
+    // store generic error
+    try { global.lastSpotifyApiLog = global.lastSpotifyApiLog || { ts: Date.now(), url, method: options.method, error: String(err) }; } catch(e) {}
     return null;
   }
+});
+
+ipcMain.handle('spotify-get-last-log', () => {
+  return global.lastSpotifyApiLog || null;
 });
 
 // Open external links

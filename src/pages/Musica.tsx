@@ -252,7 +252,43 @@ export default function Musica() {
 
     try {
       const electronApi = (window as any).electronAPI;
-      const res = await electronApi.spotifyApi({ endpoint: `/search?q=${encodeURIComponent(searchQuery.trim())}&type=${searchType}&limit=20&market=from_token` });
+      console.log('Spotify search:', { q: searchQuery.trim(), type: searchType });
+      const baseQ = encodeURIComponent(searchQuery.trim());
+      const tryEndpoints = [
+        `/search?q=${baseQ}&type=${searchType}&limit=20&market=from_token`,
+        `/search?q=${baseQ}&type=${searchType}&limit=10`,
+        `/search?q=${baseQ}&type=${searchType}&limit=1`
+      ];
+
+      let res = null;
+      let lastLog = null;
+      for (let i = 0; i < tryEndpoints.length; i++) {
+        const endpoint = tryEndpoints[i];
+        console.log('Spotify search endpoint (attempt):', endpoint);
+        res = await electronApi.spotifyApi({ endpoint });
+        console.log('Spotify search response (attempt):', res);
+        if (res !== null) break;
+        // get last main log to inspect error
+        try {
+          lastLog = await electronApi.spotifyGetLastLog();
+          console.log('Último log do main (search null):', lastLog);
+          if (lastLog && lastLog.status === 403) break; // no point retrying if scopes missing
+        } catch (e) {
+          console.error('Erro ao obter último log do main:', e);
+        }
+      }
+
+      if (res === null) {
+        if (lastLog && lastLog.status === 403) {
+          setStatusMessage('Acesso negado (403). Refaça a conexão ao Spotify para conceder permissões necessárias (Desconectar → Conectar).');
+        } else if (lastLog && lastLog.status === 400) {
+          setStatusMessage(`Erro na busca: ${lastLog.statusText} - ${lastLog.body || ''}`);
+        } else {
+          setStatusMessage('Erro ao consultar a API do Spotify. Verifique se está conectado (veja console).');
+        }
+        setSearchResults([]);
+        return;
+      }
       const results = res?.[searchType === 'track' ? 'tracks' : `${searchType}s`]?.items || [];
       setSearchResults(results);
       if (results.length === 0) {
@@ -398,6 +434,42 @@ export default function Musica() {
             >
               <LogOut size={18} />
               Desconectar
+            </button>
+          )}
+          {isConnected && (
+            <button
+              onClick={async () => {
+                // diagnostic check
+                try {
+                  const electronApi = (window as any).electronAPI;
+                  console.log('Diagnóstico Spotify: obtendo tokens...');
+                  const tokens = await electronApi.spotifyGetTokens();
+                  console.log('Diagnóstico tokens:', tokens);
+                  setStatusMessage('Executando diagnóstico do Spotify (ver console para detalhes)...');
+
+                  // try /me
+                  const me = await electronApi.spotifyApi({ endpoint: '/me' });
+                  console.log('Diagnóstico /me response:', me);
+
+                  // try a simple search
+                  const testSearch = await electronApi.spotifyApi({ endpoint: '/search?q=test&type=track&limit=1&market=from_token' });
+                  console.log('Diagnóstico search response:', testSearch);
+
+                  if (!me) setStatusMessage('Diagnóstico: /me retornou null (problema de autenticação).');
+                  else if (!testSearch) {
+                    // try get last main log
+                    const last = await electronApi.spotifyGetLastLog();
+                    console.log('Último log do main:', last);
+                    setStatusMessage(last ? `Diagnóstico: busca retornou null. Último erro: ${last.status} ${last.statusText}` : 'Diagnóstico: busca retornou null (sem log disponível).');
+                  } else setStatusMessage('Diagnóstico: OK — API do Spotify respondeu.');
+                } catch (err) {
+                  console.error('Erro no diagnóstico Spotify:', err);
+                  setStatusMessage('Erro durante diagnóstico. Ver console para detalhes.');
+                }
+              }}
+              className="ml-3 flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-all"
+            >
+              Verificar Spotify
             </button>
           )}
         </div>

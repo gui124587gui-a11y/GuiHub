@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   spotifyGetTokens: () => ipcRenderer.invoke('spotify-get-tokens'),
   spotifyRefreshToken: () => ipcRenderer.invoke('spotify-refresh-token'),
   spotifyApi: (options) => ipcRenderer.invoke('spotify-api', options),
+  spotifyGetLastLog: () => ipcRenderer.invoke('spotify-get-last-log'),
   onSpotifyAuthSuccess: (callback) => ipcRenderer.on('spotify-auth-success', callback),
   getInstalledApps: () => ipcRenderer.invoke('get-installed-apps'),
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
