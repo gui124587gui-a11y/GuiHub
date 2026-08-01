@@ -66,7 +66,7 @@ export default function Musica() {
     const body = typeof last.body === 'string' ? last.body : '';
     const reason = spotifyBodyMessage(body);
     if (last.status === 403) {
-      return `${generic} Acesso negado pelo Spotify.${reason ? ` Motivo: ${reason}.` : ''} Refaça a conexão (Desconectar → Conectar) para conceder as permissões necessárias.`;
+      return `${generic} Acesso negado pelo Spotify (403).${reason ? ` Motivo: ${reason}.` : ''} Isso costuma acontecer quando o app Spotify está em modo de desenvolvimento e sua conta não está liberada (allowlist) ou o app precisa de cota estendida. Acesse developer.spotify.com/dashboard, selecione o app e adicione sua conta em "Users"/allowlist (ou solicite cota estendida); depois reconecte.`;
     }
     if (last.status === 401) {
       return `${generic} Sessão do Spotify expirada. Desconecte e conecte novamente.`;

@@ -1,3 +1,8 @@
+# GuiHub v1.0.28
+
+## Música (Spotify)
+- **Mensagem de erro 403 mais clara:** quando o Spotify recusa uma operação, o app explica que isso geralmente acontece porque o app Spotify está em modo de desenvolvimento sem a conta liberada (allowlist) ou sem cota estendida — com o passo a passo no próprio aviso.
+
 # GuiHub v1.0.27
 
 ## Música (Spotify) — diagnóstico
