@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
+import path from 'path';
 
 // 1. Carrega a versão do package.json
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
@@ -7,8 +8,26 @@ const version = pkg.version;
 
 // Caminho absoluto para o GitHub CLI
 const ghPath = "C:\\Program Files\\GitHub CLI\\gh.exe";
-// Nome do arquivo gerado pelo electron-builder (com os espaços vistos no log)
-const setupFile = `C:/guihub-release/GuiHub Setup ${version}.exe`;
+const releaseDir = 'C:/guihub-release';
+
+function resolveSetupFile() {
+    if (!path.isAbsolute(releaseDir)) {
+        return path.resolve(releaseDir, `GuiHub.Setup.${version}.exe`);
+    }
+
+    const files = readdirSync(releaseDir, { withFileTypes: false }) || [];
+    const candidates = files.filter((file) => file.includes(`Setup.${version}.`) || file.includes(`Setup.${version}.exe`));
+
+    const exactMatch = candidates.find((file) => file === `GuiHub.Setup.${version}.exe`);
+    if (exactMatch) return path.join(releaseDir, exactMatch);
+
+    const installerMatch = candidates.find((file) => file.toLowerCase().endsWith('.exe'));
+    if (installerMatch) return path.join(releaseDir, installerMatch);
+
+    return path.join(releaseDir, `GuiHub.Setup.${version}.exe`);
+}
+
+const setupFile = resolveSetupFile();
 
 function run(cmd) {
     console.log(`> Executando: ${cmd}`);
