@@ -51,12 +51,22 @@ export default function Musica() {
     }
   };
 
+  const spotifyBodyMessage = (body: string): string => {
+    try {
+      const parsed = JSON.parse(body);
+      return parsed?.error?.message || parsed?.message || '';
+    } catch {
+      return '';
+    }
+  };
+
   const describeSpotifyError = (last: any, actionLabel: string): string => {
     const generic = `Não foi possível ${actionLabel}.`;
     if (!last) return `${generic} Verifique sua conexão (veja console).`;
     const body = typeof last.body === 'string' ? last.body : '';
+    const reason = spotifyBodyMessage(body);
     if (last.status === 403) {
-      return `${generic} Acesso negado pelo Spotify. Refaça a conexão (Desconectar → Conectar) para conceder as permissões necessárias.`;
+      return `${generic} Acesso negado pelo Spotify.${reason ? ` Motivo: ${reason}.` : ''} Refaça a conexão (Desconectar → Conectar) para conceder as permissões necessárias.`;
     }
     if (last.status === 401) {
       return `${generic} Sessão do Spotify expirada. Desconecte e conecte novamente.`;
@@ -181,7 +191,22 @@ export default function Musica() {
   const toggleShuffle = async () => {
     try {
       const nextState = !shuffleState;
-      await spotifyService.setShuffle(nextState);
+      let res = await spotifyService.setShuffle(nextState);
+      if (res === null) {
+        // Se não houver dispositivo ativo, tenta apontar para o dispositivo disponível
+        const target = devices.find((d) => d.is_active) || devices[0];
+        if (target?.id) {
+          await spotifyService.transferPlayback(target.id).catch(() => {});
+          await new Promise((r) => setTimeout(r, 400));
+          res = await spotifyService.setShuffle(nextState);
+        }
+      }
+      if (res === null) {
+        const last = await getLastSpotifyError();
+        console.error('toggleShuffle failed, last log:', last);
+        setStatusMessage(describeSpotifyError(last, 'alternar a reprodução aleatória'));
+        return;
+      }
       setShuffleState(nextState);
       setStatusMessage(nextState ? 'Reprodução aleatória ativada.' : 'Reprodução aleatória desativada.');
     } catch (err) {
@@ -193,7 +218,21 @@ export default function Musica() {
   const cycleRepeat = async () => {
     try {
       const nextState = repeatState === 'off' ? 'context' : repeatState === 'context' ? 'track' : 'off';
-      await spotifyService.setRepeat(nextState);
+      let res = await spotifyService.setRepeat(nextState);
+      if (res === null) {
+        const target = devices.find((d) => d.is_active) || devices[0];
+        if (target?.id) {
+          await spotifyService.transferPlayback(target.id).catch(() => {});
+          await new Promise((r) => setTimeout(r, 400));
+          res = await spotifyService.setRepeat(nextState);
+        }
+      }
+      if (res === null) {
+        const last = await getLastSpotifyError();
+        console.error('cycleRepeat failed, last log:', last);
+        setStatusMessage(describeSpotifyError(last, 'alterar o modo de repetição'));
+        return;
+      }
       setRepeatState(nextState);
       setStatusMessage(nextState === 'off' ? 'Repetição desligada.' : nextState === 'context' ? 'Repetir álbum/contexto.' : 'Repetir faixa.');
     } catch (err) {
@@ -292,6 +331,14 @@ export default function Musica() {
   const loadPlaylistTracks = async (playlistId: string) => {
     try {
       const res = await spotifyService.getPlaylistTracks(playlistId, 100, 0);
+      if (res === null) {
+        const last = await getLastSpotifyError();
+        console.error('loadPlaylistTracks failed, last log:', last);
+        setPlaylistTracks([]);
+        setPlaylistsTracksMap(prev => ({ ...prev, [playlistId]: [] }));
+        setPlaylistActionMsg(describeSpotifyError(last, 'carregar as faixas da playlist'));
+        return;
+      }
       const items = res?.items || res || [];
       setPlaylistTracks(items);
       setPlaylistsTracksMap(prev => ({ ...prev, [playlistId]: items }));
@@ -301,7 +348,7 @@ export default function Musica() {
       }
     } catch (err) {
       console.error('Erro ao carregar faixas da playlist:', err);
-      setPlaylistActionMsg('Não foi possível carregar as faixas da playlist.');
+      setPlaylistActionMsg(describeSpotifyError(await getLastSpotifyError().catch(() => null), 'carregar as faixas da playlist'));
     }
   };
 
@@ -421,22 +468,23 @@ export default function Musica() {
     }
   };
 
-  const handleSearch = async (e?: React.FormEvent) => {
+  const handleSearch = async (e?: React.FormEvent, typeOverride?: string) => {
     if (e) e.preventDefault();
+    const type = typeOverride || searchType;
     if (!searchQuery.trim()) return;
 
     setSearchLoading(true);
     setStatusMessage(null);
 
     try {
-      console.log('Spotify search:', { q: searchQuery.trim(), type: searchType });
+      console.log('Spotify search:', { q: searchQuery.trim(), type });
       let res = null;
       let lastLog = null;
       const tryLimits = [20, 10, 1];
       for (let i = 0; i < tryLimits.length; i++) {
         const limit = tryLimits[i];
         console.log('Spotify search attempt limit=', limit);
-        res = await spotifyService.search(searchQuery.trim(), searchType, limit);
+        res = await spotifyService.search(searchQuery.trim(), type, limit);
         console.log('Spotify search response (attempt):', res);
         if (res !== null) break;
         try {
@@ -459,7 +507,7 @@ export default function Musica() {
         setSearchResults([]);
         return;
       }
-      const results = res?.[searchType === 'track' ? 'tracks' : `${searchType}s`]?.items || [];
+      const results = res?.[type === 'track' ? 'tracks' : `${type}s`]?.items || [];
       setSearchResults(results);
       if (results.length === 0) {
         setStatusMessage('Nenhum resultado encontrado para essa busca.');
@@ -619,6 +667,12 @@ export default function Musica() {
                   console.log('Diagnóstico tokens:', tokens);
                   setStatusMessage('Executando diagnóstico do Spotify (ver console para detalhes)...');
 
+                  // Escopos concedidos ao token atual
+                  const scopes = tokens?.scopes ? String(tokens.scopes).split(/\s+/) : [];
+                  console.log('Diagnóstico scopes concedidos:', scopes);
+                  const hasPlaylistModify = scopes.some((s: string) => s === 'playlist-modify-public' || s === 'playlist-modify-private');
+                  const hasPlaylistRead = scopes.some((s: string) => s === 'playlist-read-private' || s === 'playlist-read-collaborative');
+
                   // try /me
                   const me = await spotifyService.getCurrentUser();
                   console.log('Diagnóstico /me response:', me);
@@ -627,13 +681,28 @@ export default function Musica() {
                   const testSearch = await spotifyService.search('test', 'track', 1);
                   console.log('Diagnóstico search response:', testSearch);
 
+                  // Testa carregar as faixas de uma playlist pública (funciona com qualquer token válido)
+                  let tracksTest: any = 'não executado';
+                  if (testSearch) {
+                    const plSearch = await spotifyService.search('playlist', 'playlist', 1);
+                    const pl = plSearch?.playlists?.items?.[0];
+                    if (pl) {
+                      const plTracks = await spotifyService.getPlaylistTracks(pl.id, 5, 0);
+                      tracksTest = plTracks ? `ok (${(plTracks.items || []).length} faixas em "${pl.name}")` : 'FALHOU (null)';
+                    }
+                  }
+                  console.log('Diagnóstico getPlaylistTracks:', tracksTest);
+
                   if (!me) setStatusMessage('Diagnóstico: /me retornou null (problema de autenticação).');
                   else if (!testSearch) {
                     // try get last main log
                     const last = await electronApi.spotifyGetLastLog();
                     console.log('Último log do main:', last);
                     setStatusMessage(last ? `Diagnóstico: busca retornou null. Último erro: ${last.status} ${last.statusText}` : 'Diagnóstico: busca retornou null (sem log disponível).');
-                  } else setStatusMessage('Diagnóstico: OK — API do Spotify respondeu.');
+                  } else {
+                    const scopesMsg = scopes.length > 0 ? `${scopes.length} escopos (${hasPlaylistModify ? 'playlist-modify ✓' : 'playlist-modify ✗'}, ${hasPlaylistRead ? 'playlist-read ✓' : 'playlist-read ✗'})` : 'desconhecidos';
+                    setStatusMessage(`Diagnóstico: API OK. Escopos: ${scopesMsg}. Faixas de playlist: ${tracksTest}. Detalhes no console.`);
+                  }
                 } catch (err) {
                   console.error('Erro no diagnóstico Spotify:', err);
                   setStatusMessage('Erro durante diagnóstico. Ver console para detalhes.');
@@ -662,7 +731,8 @@ export default function Musica() {
                 setCurrentTrack(null);
                 lastTrackIdRef.current = null;
                 setScopeWarning(null);
-                setStatusMessage('Conecte novamente para autorizar as permissões de playlist.');
+                setStatusMessage('Autorize novamente o Spotify para conceder as permissões de playlist.');
+                handleLogin();
               }}
               className="shrink-0 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-200 transition-colors"
             >
@@ -707,7 +777,16 @@ export default function Musica() {
                       <button
                         key={type}
                         type="button"
-                        onClick={() => setSearchType(type as any)}
+                        onClick={() => {
+                          if (searchType === type) return;
+                          setSearchType(type as any);
+                          // limpa os resultados antigos (do tipo anterior) e procura de novo automaticamente
+                          setSearchResults([]);
+                          setStatusMessage(null);
+                          if (searchQuery.trim()) {
+                            handleSearch(undefined, type as any);
+                          }
+                        }}
                         className={`rounded-full px-4 py-2 text-sm transition-all ${searchType === type ? 'bg-emerald-500 text-white' : 'bg-cardHover text-textSecondary hover:bg-white/5'}`}
                       >
                         {type === 'track' ? 'Faixas' : type === 'album' ? 'Álbum' : type === 'artist' ? 'Artistas' : 'Playlists'}

@@ -1,3 +1,12 @@
+# GuiHub v1.0.26
+
+## Música (Spotify) — correções e melhorias
+- **Busca: ao trocar de aba (Faixas/Álbum/Artistas/Playlists) a busca é refeita automaticamente** com o mesmo termo, e os resultados antigos da aba anterior são limpos (antes, os resultados ficavam "vazando" entre abas com botões errados).
+- **Corrigido: Shuffle e Repetição "bugados".** Antes a interface alternava mesmo quando a API falhava (sem dispositivo ativo) e o estado voltava sozinho. Agora o app verifica o resultado real, tenta usar o dispositivo disponível e mostra o motivo claro se não conseguir.
+- **Permissões de playlist:** botão "Reconectar" no aviso de permissão agora abre a autorização do Spotify na hora (re-autorização completa em um clique).
+- **Diagnóstico "Verificar Spotify" melhorado:** mostra quantos escopos o token tem (e se inclui permissão de editar/ler playlists) e testa carregar faixas de uma playlist pública, com o resultado na tela e no console.
+- **Mensagens de erro mais precisas:** erros 403 agora mostram o motivo exato que o Spotify devolve (ex.: "Insufficient client scope") e o carregamento de faixas de playlist mostra o motivo real quando falha (antes falhava em silêncio parecendo playlist vazia).
+
 # GuiHub v1.0.25
 
 ## Música (Spotify) — correções
