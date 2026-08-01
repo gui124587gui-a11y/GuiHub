@@ -3,7 +3,8 @@ import { readFileSync, readdirSync } from 'fs';
 import path from 'path';
 
 // 1. Carrega a versão do package.json
-const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
+const pkgPath = path.resolve('./package.json');
+const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 const version = pkg.version;
 
 // Caminho absoluto para o GitHub CLI

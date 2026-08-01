@@ -1,7 +1,7 @@
 {
   "name": "guihub",
   "productName": "GuiHub",
-  "version": "1.0.15",
+  "version": "1.0.17",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -53,7 +53,7 @@
     "electron-builder": "^26.15.3",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.19",
+    "eslint-plugin-react-refresh": "^4.0.19",
     "globals": "^16.0.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
